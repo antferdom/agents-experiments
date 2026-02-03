@@ -1,0 +1,6 @@
+model = "gpt-5.2" 
+model_reasoning_effort = "high"
+model_reasoning_summary = "detailed"
+
+[notice.model_migrations]
+"gpt-5.2" = "gpt-5.2-codex"

@@ -1,0 +1,41 @@
+model_provider       = "xai"
+model                = "grok-4-1-fast-reasoning"
+model_reasoning_effort   = "high"      
+model_reasoning_summary = "detailed"
+model_verbosity      = "medium"
+approval_policy      = "on-request"       
+# sandbox_mode = "danger-full-access"
+
+[model_providers.xai]
+name = "xAI Grok"
+base_url = "https://api.x.ai/v1"
+env_key = "XAI_API_KEY"                   
+wire_api = "responses"                   
+
+# ──────────────────────────────
+# Profiles — switch with `codex --profile <name>`
+# ──────────────────────────────
+
+[profiles.fast-reasoning]
+description          = "Grok 4.1 Fast Reasoning — best price/performance"
+model                = "grok-4-1-fast-reasoning"
+model_reasoning_effort   = "high"
+model_reasoning_summary  = "detailed"
+
+[profiles.code-optimized]
+description          = "Specialised coding model (256k context)"
+model                = "grok-code-fast-1"
+model_reasoning_effort   = "medium"
+model_reasoning_summary  = "concise"
+
+[profiles.flagship]
+description          = "Grok 4-0709 — maximum intelligence (expensive)"
+model                = "grok-4-0709"
+model_reasoning_effort   = "high"
+model_reasoning_summary  = "detailed"
+
+[profiles.fast-non-reasoning]
+description          = "Pure speed, no internal chain-of-thought"
+model                = "grok-4-1-fast-non-reasoning"
+
+profile = "code-optimized"   # uncomment to make --profile unnecessary
