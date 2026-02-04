@@ -1,9 +1,10 @@
-model_provider       = "xai"
-model                = "grok-4-1-fast-reasoning"
-model_reasoning_effort   = "high"      
+profile = "code-optimized"
+
+model_provider       = "xai"  
 model_reasoning_summary = "detailed"
 model_verbosity      = "medium"
-approval_policy      = "on-request"       
+approval_policy      = "on-request" 
+web_search = "disabled" # v0.95.0 always includes the web_search tool   
 # sandbox_mode = "danger-full-access"
 
 [model_providers.xai]
@@ -37,5 +38,3 @@ model_reasoning_summary  = "detailed"
 [profiles.fast-non-reasoning]
 description          = "Pure speed, no internal chain-of-thought"
 model                = "grok-4-1-fast-non-reasoning"
-
-profile = "code-optimized"   # uncomment to make --profile unnecessary
