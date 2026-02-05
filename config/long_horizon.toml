@@ -1,0 +1,48 @@
+profile = "code-optimized"
+
+model_provider       = "xai"  
+model_reasoning_summary = "detailed"
+model_verbosity      = "medium"
+approval_policy      = "on-request" 
+web_search = "disabled" # v0.95.0 always includes the web_search tool   
+# sandbox_mode = "danger-full-access"
+
+[model_providers.xai]
+name = "xAI Grok"
+base_url = "https://api.x.ai/v1"
+env_key = "XAI_API_KEY"                   
+wire_api = "responses"                   
+
+# ──────────────────────────────
+# Profiles — switch with `codex --profile <name>`
+# ──────────────────────────────
+
+[profiles.fast-reasoning]
+description          = "Grok 4.1 Fast Reasoning — best price/performance"
+model                = "grok-4-1-fast-reasoning"
+model_reasoning_effort   = "high"
+model_reasoning_summary  = "detailed"
+
+[profiles.code-optimized]
+description          = "Specialised coding model (256k context)"
+model                = "grok-code-fast-1"
+model_reasoning_effort   = "medium"
+model_reasoning_summary  = "concise"
+sandbox_mode = "danger-full-access"  
+persistence = "filesystem"
+tools_enabled = ["pdb_wrapper", "state_serializer"]  # Custom tools for pdb and saving
+
+[profiles.flagship]
+description          = "Grok 4-0709 — maximum intelligence (expensive)"
+model                = "grok-4-0709"
+model_reasoning_effort   = "high"
+model_reasoning_summary  = "detailed"
+
+[profiles.fast-non-reasoning]
+description          = "Pure speed, no internal chain-of-thought"
+model                = "grok-4-1-fast-non-reasoning"
+
+[state_serializer]
+format = "markdown"                
+auto_save = true                   # Save on breakpoints/errors
+storage_path = "/debug_memory/"    
