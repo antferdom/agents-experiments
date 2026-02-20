@@ -1,0 +1,8 @@
+# Template notify hook for Codex config.toml
+notify = [
+  "python3",
+  "<AGENTS_EXPERIMENTS_ROOT>/.agents/skills/codex-rollout-trace/scripts/codex_rollout_serialize.py",
+  "--from-notify",
+  "--emit-replay",
+  "--emit-agent-trace"
+]
