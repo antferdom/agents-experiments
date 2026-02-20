@@ -1,6 +1,50 @@
-model = "gpt-5.2" 
-model_reasoning_effort = "high"
-model_reasoning_summary = "detailed"
+profile = "long-horizon"
 
-[notice.model_migrations]
-"gpt-5.2" = "gpt-5.2-codex"
+project_doc_max_bytes = 131072
+tool_output_token_limit = 12000
+background_terminal_timeout = 1800000
+
+notify = [
+  "bash",
+  "-lc",
+  "python3 \"$CODEX_ROLLOUT_SERIALIZER\" --from-notify --emit-replay --emit-agent-trace"
+]
+
+[history]
+persistence = "save-all"
+max_bytes = 536870912
+
+[agents]
+max_threads = 8
+
+[tui]
+alternate_screen = "never"
+notifications = true
+notification_method = "auto"
+animations = true
+show_tooltips = true
+
+[profiles.long-horizon]
+model = "gpt-5.3-codex"
+model_reasoning_effort = "xhigh"
+model_reasoning_summary = "detailed"
+model_verbosity = "high"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "cached"
+
+[profiles.heavy-long-horizon]
+model = "gpt-5.3-codex"
+model_reasoning_effort = "xhigh"
+model_reasoning_summary = "detailed"
+model_verbosity = "high"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "live"
+
+[profiles.heavy-long-horizon.features]
+multi_agent = true
+use_linux_sandbox_bwrap = true
+responses_websockets_v2 = true
+memory_tool = true
+child_agents_md = true
