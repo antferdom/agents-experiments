@@ -1,4 +1,4 @@
-profile = "long-horizon"
+profile = "frontier-long-horizon"
 
 project_doc_max_bytes = 131072
 tool_output_token_limit = 12000
@@ -7,7 +7,7 @@ background_terminal_timeout = 1800000
 notify = [
   "bash",
   "-lc",
-  "python3 \"$CODEX_ROLLOUT_SERIALIZER\" --from-notify --emit-replay --emit-agent-trace"
+  'python3 "$CODEX_ROLLOUT_SERIALIZER" --from-notify "$0" --emit-replay --emit-agent-trace'
 ]
 
 [history]
@@ -33,7 +33,7 @@ approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 web_search = "cached"
 
-[profiles.heavy-long-horizon]
+[profiles.frontier-long-horizon]
 model = "gpt-5.3-codex"
 model_reasoning_effort = "xhigh"
 model_reasoning_summary = "detailed"
@@ -42,7 +42,7 @@ approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 web_search = "live"
 
-[profiles.heavy-long-horizon.features]
+[profiles.frontier-long-horizon.features]
 multi_agent = true
 use_linux_sandbox_bwrap = true
 responses_websockets_v2 = true
