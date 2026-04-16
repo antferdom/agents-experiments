@@ -1,3 +1,10 @@
+---
+name: codex-rollout-trace
+description: Persist Codex conversation state into a markdown timeline derived from rollout JSONL files. Use when you need long-horizon traceability, a readable markdown artifact, notify-hook trace refresh, replay snapshots, or Agent Trace JSONL export.
+metadata:
+  short-description: Persist rollout traces to markdown
+---
+
 # Codex Rollout Trace Skill
 
 Persist Codex conversation state into a markdown timeline derived from rollout JSONL files.
