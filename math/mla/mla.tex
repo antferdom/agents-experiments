@@ -1,0 +1,245 @@
+\documentclass[]{book}
+\usepackage{xcolor}
+\usepackage{listings}
+\definecolor{ghblack}{HTML}{24292E}
+\definecolor{ghblue}{HTML}{0366D6}
+\definecolor{ghorange}{HTML}{E36209}
+\definecolor{ghpurple}{HTML}{6F42C1}
+\definecolor{ghgreen}{HTML}{22863A}
+\definecolor{ghgray}{HTML}{6A737D}
+\definecolor{ghbg}{HTML}{F6F8FA}
+\lstdefinestyle{githubpy}{
+    language=Python,
+    backgroundcolor=\color{ghbg},
+    basicstyle=\ttfamily\footnotesize\color{ghblack},
+    commentstyle=\color{ghgray},
+    keywordstyle=\color{ghpurple},
+    stringstyle=\color{ghblue},
+    numberstyle=\tiny\color{ghgray},
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=4,
+    frame=single,
+    framesep=5pt,
+    framerule=0pt,
+    rulecolor=\color{ghgray},
+    identifierstyle=\color{ghblack},
+    emphstyle=\color{ghorange},
+    emph={self},
+    morekeywords={as, assert, break, class, continue, def, del, elif, else, except, finally, for, from, global, if, import, in, is, lambda, nonlocal, not, or, pass, raise, return, try, while, with, yield},
+}
+
+%These tell TeX which packages to use.
+\usepackage{array,epsfig}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{amsxtra}
+\usepackage{amsthm}
+\usepackage{mathrsfs}
+\usepackage{color}
+\usepackage{graphicx}
+\graphicspath{ {./images/} }
+%Here I define some theorem styles and shortcut commands for symbols I use often
+\theoremstyle{definition}
+\newtheorem{defn}{Definition}
+\newtheorem{thm}{Theorem}
+\newtheorem{cor}{Corollary}
+\newtheorem*{rmk}{Remark}
+\newtheorem{lem}{Lemma}
+\newtheorem*{joke}{Joke}
+\newtheorem{ex}{Example}
+\newtheorem*{soln}{Solution}
+\newtheorem{prop}{Proposition}
+
+\newcommand{\lra}{\longrightarrow}
+\newcommand{\ra}{\rightarrow}
+\newcommand{\surj}{\twoheadrightarrow}
+\newcommand{\graph}{\mathrm{graph}}
+\newcommand{\bb}[1]{\mathbb{#1}}
+\newcommand{\Z}{\bb{Z}}
+\newcommand{\Q}{\bb{Q}}
+\newcommand{\R}{\bb{R}}
+\newcommand{\C}{\bb{C}}
+\newcommand{\N}{\bb{N}}
+\newcommand{\M}{\mathbf{M}}
+\newcommand{\m}{\mathbf{m}}
+\newcommand{\MM}{\mathscr{M}}
+\newcommand{\HH}{\mathscr{H}}
+\newcommand{\Om}{\Omega}
+\newcommand{\Ho}{\in\HH(\Om)}
+\newcommand{\bd}{\partial}
+\newcommand{\del}{\partial}
+\newcommand{\bardel}{\overline\partial}
+\newcommand{\textdf}[1]{\textbf{\textsf{#1}}\index{#1}}
+\newcommand{\img}{\mathrm{img}}
+\newcommand{\ip}[2]{\left\langle{#1},{#2}\right\rangle}
+\newcommand{\inter}[1]{\mathrm{int}{#1}}
+\newcommand{\exter}[1]{\mathrm{ext}{#1}}
+\newcommand{\cl}[1]{\mathrm{cl}{#1}}
+\newcommand{\ds}{\displaystyle}
+\newcommand{\vol}{\mathrm{vol}}
+\newcommand{\cnt}{\mathrm{ct}}
+\newcommand{\osc}{\mathrm{osc}}
+\newcommand{\LL}{\mathbf{L}}
+\newcommand{\UU}{\mathbf{U}}
+\newcommand{\support}{\mathrm{support}}
+\newcommand{\AND}{\;\wedge\;}
+\newcommand{\OR}{\;\vee\;}
+\newcommand{\Oset}{\varnothing}
+\newcommand{\st}{\ni}
+\newcommand{\wh}{\widehat}
+
+%Pagination stuff.
+\setlength{\topmargin}{-.3 in}
+\setlength{\oddsidemargin}{0in}
+\setlength{\evensidemargin}{0in}
+\setlength{\textheight}{9.in}
+\setlength{\textwidth}{6.5in}
+\pagestyle{empty}
+
+
+
+\begin{document}
+\subsection*{Low-rank compression for Q}
+\paragraph{}
+Given $h_t \in \mathbb{R}^{B \times L \times 5120}$, where $B$ is the batch size and $L$ is the sequence length. In DeepSeek-V2, the Q vector also adopts low-rank compression. First, the input vector is projected to a 1536-dimensional low-dimensional space:
+\begin{equation}
+    c_t^Q = W^{DQ} h_t \in \mathbb{R}^{B \times L \times 1536}
+\end{equation}
+\paragraph{}
+where, $W^{DQ} \in \mathbb{R}^{d_{c} \times d}$. $d$ is the hidden dimension ($5120$ in this case) and $d_{c}$ is the query compression dimension ($1536$ in this case)
+\paragraph{}
+Then, it is projected (decompression) to the $\mathbb{R}^{H \times 128}$ multi-head vector space (where $H=128$ is the number of heads), obtaining the first part of the Q vector:
+\begin{equation}
+    q_t^C = W^{UQ} c_t^Q \in \mathbb{R}^{B \times L \times H \times 128}
+\end{equation}
+\paragraph{}
+Next, it is projected to $\mathbb{R}^{H \times 64}$ and uses RoPE to embed position information, obtaining the second part of the Q vector:
+\begin{equation}
+    q_t^R = \mathrm{RoPE}(W^{KR} h_t) \in \mathbb{R}^{B \times L \times H \times 64} 
+\end{equation}
+\paragraph{}
+The two parts are concatenated to obtain the final Q vector:
+\begin{equation}
+    q_t = [q_t^C, q_t^R] \in \mathbb{R}^{B \times L \times H \times 192}
+\end{equation}
+\begin{lstlisting}[style=githubpy]
+q = self.q_b_proj(self.q_a_layernorm(self.q_a_proj(hidden_states)))
+q = q.view(bsz, q_len, self.num_heads, self.q_head_dim).transpose(1, 2)
+\end{lstlisting}
+\subsection*{Low-rank joint compression for K and V}
+\paragraph{}
+When computing the KV vector, the input vector first needs to be projected to a 512-dimensional joint compressed representation:
+\begin{equation}
+    c_t^{KV} = W^{DKV} h_t \in \mathbb{R}^{B \times L \times 512}
+\end{equation}
+\paragraph{}
+Similar to the computation process of the Q vector, the first part of the K vector is obtained by projecting $c_t^{KV}$ through decompression to the $\mathbb{R}^{H \times 128}$ multi-head vector space:
+\begin{equation}
+    k_t^C = W^{UK} c_t^{KV} \in \mathbb{R}^{B \times L \times H \times 128}
+\end{equation}
+\paragraph{}
+The second part of K is obtained by projecting the input vector to a 64-dimensional vector space and applying RoPE to embed position information:
+\begin{equation}
+    k_t^R = \mathrm{RoPE}(W^{KR} h_t) \in \mathbb{R}^{B \times L \times 64}
+\end{equation}
+\paragraph{}
+Unlike Q, the complete K is obtained by broadcasting the second part of K to each head and concatenating it with the first part:
+\begin{equation}
+     k_t = \begin{bmatrix}
+    k_{t,1}^C & k_t^R \\ 
+    k_{t,2}^C & k_t^R \\
+    \vdots & \vdots \\
+    \end{bmatrix} \in \mathbb{R}^{B \times L \times H \times 192}
+\end{equation}
+\paragraph{}
+That is, the RoPE part of each head is exactly the same.
+\paragraph{}
+The computation of the V vector is relatively simple, directly decompressing $c_t^{KV}$ to $\mathbb{R}^{H \times 128}$:
+\begin{equation}
+    v_t = W^{UV} c_t^{KV} \in \mathbb{R}^{B \times L \times H \times 128} 
+\end{equation}
+\paragraph{}
+The attention computation process is no different from traditional MHA. First, the attention score is computed:
+\begin{equation}
+a = \mathrm{softmax}\left(\frac{q_t^\top k_t + \mathrm{Mask}}{\sqrt{192}}\right) = 
+\mathrm{softmax}\left(\frac{{q_t^C}^\top k_t^C + {q_t^R}^\top k_t^R + \mathrm{Mask}}{\sqrt{128 + 64}} \right)
+\in \mathbb{R}^{B \times L \times H \times L}
+\end{equation}
+\paragraph{}
+The weighted sum of V is computed, and all heads are flattened to obtain the Attention output:
+\begin{equation}
+    o = a \cdot v_t \in \mathbb{R}^{B \times L \times H \times 128} \cong \mathbb{R}^{B \times L \times 16384}
+\end{equation}
+\paragraph{}
+After projection with another matrix, the final output of MLA is obtained:
+\begin{equation}
+    u = W^O o \in \mathbb{R}^{B \times L \times 5120}
+\end{equation}
+\paragraph{}
+\begin{lstlisting}[style=githubpy]
+def forward(...):
+    bsz, q_len, _ = hidden_states.size()
+    
+    # Compute Q: first reduce dimension then increase dimension
+    # Compared to directly using a matrix of size [5120, 24576], 
+    # the low-rank decomposition [5120, 1536] * [1536, 24576] greatly reduces storage space and computation
+    q = self.q_b_proj(self.q_a_layernorm(self.q_a_proj(hidden_states)))
+    q = q.view(bsz, q_len, self.num_heads, self.q_head_dim).transpose(1, 2)
+    # Split rope and non-rope parts
+    q_nope, q_pe = torch.split(
+        q, [self.qk_nope_head_dim, self.qk_rope_head_dim], dim=-1
+    )
+    
+    # Compute KV
+    # An optimized MLA KVCache implementation only needs to cache this compressed_kv, but it is actually expanded later
+    compressed_kv = self.kv_a_proj_with_mqa(hidden_states)
+    # Here compressed_kv corresponds to c_t^{KV} in the formula
+    compressed_kv, k_pe = torch.split(
+        compressed_kv, [self.kv_lora_rank, self.qk_rope_head_dim], dim=-1
+    )
+    k_pe = k_pe.view(bsz, q_len, 1, self.qk_rope_head_dim).transpose(1, 2)
+    # Expand MLA to the standard MHA form
+    kv = (
+        self.kv_b_proj(self.kv_a_layernorm(compressed_kv))
+        .view(bsz, q_len, self.num_heads, self.qk_nope_head_dim + self.v_head_dim)
+        .transpose(1, 2)
+    )
+    # Since kv_b_proj packs W^{UK} and W^{UV} together, separate them
+    k_nope, value_states = torch.split(
+        kv, [self.qk_nope_head_dim, self.v_head_dim], dim=-1
+    )
+    ...
+    # Add rope to the parts that need rope
+    q_pe, k_pe = apply_rotary_pos_emb(q_pe, k_pe, cos, sin, position_ids)
+    
+    # Update and concatenate historical KVCache
+    # It can be seen that the expanded MHA KVCache is stored here
+    # where q_head_dim equals qk_nope_head_dim + qk_rope_head_dim
+    query_states = k_pe.new_empty(bsz, self.num_heads, q_len, self.q_head_dim)
+    query_states[:, :, :, : self.qk_nope_head_dim] = q_nope
+    query_states[:, :, :, self.qk_nope_head_dim :] = q_pe
+    key_states = k_pe.new_empty(bsz, self.num_heads, q_len, self.q_head_dim)
+    key_states[:, :, :, : self.qk_nope_head_dim] = k_nope
+    key_states[:, :, :, self.qk_nope_head_dim :] = k_pe
+    if past_key_value is not None:
+        cache_kwargs = {"sin": sin, "cos": cos}  # Specific to RoPE models
+        key_states, value_states = past_key_value.update(
+            key_states, value_states, self.layer_idx, cache_kwargs
+        )
+
+    # The subsequent code is the standard MHA code, no need to elaborate
+    ...
+\end{lstlisting}
+\end{document}
+
+
+
