@@ -1,0 +1,159 @@
+{
+  "checks": {
+    "absorbed_impl_vs_baseline_max_abs": 5.960464477539063e-08,
+    "absorbed_impl_vs_baseline_rel_l2": 1.3234854634447402e-07,
+    "cache_compressed_vs_baseline_max_abs": 0.0,
+    "cache_compressed_vs_baseline_rel_l2": 0.0,
+    "context_materialized_vs_absorbed_max_abs": 5.960464477539063e-08,
+    "reference_vs_local_baseline_max_abs": 5.960464477539063e-08,
+    "reference_vs_local_baseline_rel_l2": 8.086963987352647e-08,
+    "score_cat_vs_absorbed_max_abs": 1.1920928955078125e-07,
+    "score_cat_vs_decomposed_max_abs": 1.1920928955078125e-07
+  },
+  "cuda_device": "NVIDIA B200",
+  "cuda_version": "12.8",
+  "device": "cuda",
+  "dimensions": {
+    "B": 2,
+    "C": 6,
+    "D": 16,
+    "H": 4,
+    "L": 3,
+    "M": 5,
+    "N": 3,
+    "Q": 5,
+    "R": 2,
+    "T": 5,
+    "V": 3,
+    "X": 8,
+    "Y": 6
+  },
+  "failures": [],
+  "shapes": {
+    "compressed_kv_norm_BMC": [
+      2,
+      5,
+      6
+    ],
+    "context_BHLV": [
+      2,
+      4,
+      3,
+      3
+    ],
+    "context_absorbed_BHLV": [
+      2,
+      4,
+      3,
+      3
+    ],
+    "context_flat_BLD": [
+      2,
+      3,
+      12
+    ],
+    "k_nope_BHMN": [
+      2,
+      4,
+      5,
+      3
+    ],
+    "k_rope_after_rope_B1MR": [
+      2,
+      1,
+      5,
+      2
+    ],
+    "key_BHMT": [
+      2,
+      4,
+      5,
+      5
+    ],
+    "kv_full_BHMY": [
+      2,
+      4,
+      5,
+      6
+    ],
+    "kv_raw_BMX": [
+      2,
+      5,
+      8
+    ],
+    "output_BLD": [
+      2,
+      3,
+      16
+    ],
+    "q_full_BHLT": [
+      2,
+      4,
+      3,
+      5
+    ],
+    "q_latent_BLQ": [
+      2,
+      3,
+      5
+    ],
+    "q_nope_BHLN": [
+      2,
+      4,
+      3,
+      3
+    ],
+    "q_rope_after_rope_BHLR": [
+      2,
+      4,
+      3,
+      2
+    ],
+    "query_BHLT": [
+      2,
+      4,
+      3,
+      5
+    ],
+    "scores_BHLM": [
+      2,
+      4,
+      3,
+      5
+    ],
+    "scores_absorbed_BHLM": [
+      2,
+      4,
+      3,
+      5
+    ],
+    "scores_decomposed_BHLM": [
+      2,
+      4,
+      3,
+      5
+    ],
+    "value_BHMV": [
+      2,
+      4,
+      5,
+      3
+    ],
+    "weights_BHLM": [
+      2,
+      4,
+      3,
+      5
+    ]
+  },
+  "status": "passed",
+  "tolerances": {
+    "absorbed_impl_vs_baseline_max_abs": 1e-05,
+    "cache_compressed_vs_baseline_max_abs": 1e-05,
+    "context_materialized_vs_absorbed_max_abs": 1e-05,
+    "reference_vs_local_baseline_max_abs": 1e-05,
+    "score_cat_vs_absorbed_max_abs": 1e-05,
+    "score_cat_vs_decomposed_max_abs": 1e-06
+  },
+  "torch_version": "2.11.0+cu128"
+}

@@ -1,0 +1,81 @@
+{
+  "background": true,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1778289874,
+  "created_at": 1778289326,
+  "error": null,
+  "frequency_penalty": 0.0,
+  "id": "resp_0f926c32f805960d0069fe8aaed7a4819db3d2d74bcd70c0ee",
+  "incomplete_details": null,
+  "instructions": null,
+  "max_output_tokens": 50000,
+  "max_tool_calls": null,
+  "metadata": {
+    "project": "math/mla",
+    "task_id": "mla_015_pro_external_impl_synthesis"
+  },
+  "model": "gpt-5.5-pro-2026-04-23",
+  "moderation": null,
+  "object": "response",
+  "output": [
+    {
+      "id": "rs_0f926c32f805960d0069fe8cd1e958819db79988c009381f4a",
+      "summary": [],
+      "type": "reasoning"
+    },
+    {
+      "content": [
+        {
+          "annotations": [],
+          "logprobs": [],
+          "text": "```tex\n\\section{External implementation check}\n\\label{sec:external-implementation-check}\n\n\\paragraph{Conventions.}\nFor a fixed batch element \\(b\\), write the cached latent and RoPE suffix as row-token\nmatrices\n\\[\n  Z_b := [z_{bm:}]_{m=1}^{M}\\in \\mathbb{R}^{M\\times C},\n  \\qquad\n  \\rho_b := [\\rho_{bm:}]_{m=1}^{M}\\in \\mathbb{R}^{M\\times R}.\n\\]\nFor head \\(h\\), write\n\\[\n  Q^{\\mathrm n}_{bh}:=q_{\\mathrm{nope},bh}\\in \\mathbb{R}^{L\\times N},\n  \\qquad\n  Q^{\\mathrm r}_{bh}:=q_{\\mathrm{rope},bh}\\in \\mathbb{R}^{L\\times R},\n\\]\nwhere \\(\\mathrm n\\) denotes the non-RoPE part and \\(\\mathrm r\\) denotes the RoPE\nsuffix.  The projection blocks from \\(\\mathrm{kv\\_b\\_proj}\\) are treated as\ncolumn maps\n\\[\n  W^K_h\\in \\mathbb{R}^{N\\times C},\n  \\qquad\n  W^V_h\\in \\mathbb{R}^{V\\times C}.\n\\]\nThus implementation row-products use \\((W^K_h)^\\top\\in\\mathbb{R}^{C\\times N}\\)\nand \\((W^V_h)^\\top\\in\\mathbb{R}^{C\\times V}\\).  The canonical compressed MLA\ncache object is\n\\[\n  \\mathcal{C}^{\\mathrm{MLA}}_{bm}\n  :=\n  [\\,z_{bm:},\\rho_{bm:}\\,]\\in \\mathbb{R}^{C+R}\n  =\n  \\mathbb{R}^{X},\n  \\qquad\n  \\mathcal{C}^{\\mathrm{MLA}}_{b}\n  =\n  [\\,Z_b,\\rho_b\\,]\\in \\mathbb{R}^{M\\times X}.\n\\]\n\n\\paragraph{Source-backed comparison.}\nThe two external implementations expose the same algebraic cache\n\\([z,\\rho]\\in\\mathbb{R}^{C+R}\\), up to physical layout.\n\n\\begin{itemize}\n\\item \\textbf{vLLM, commit \\texttt{e3b65a5ba069b350120ca7a614a010787d2de867}\n      \\((2026\\text{-}05\\text{-}08)\\).}\n      In\n      \\texttt{vllm/model\\_executor/layers/attention/mla\\_attention.py}:\n      \\begin{itemize}\n      \\item Lines \\(26\\)--\\(63\\) define MLA with a single latent vector per-token\n            cache.  The source constants are\n            \\[\n              L_{\\mathrm{kv}}=512,\\qquad\n              P_{\\mathrm{nope}}=128,\\qquad\n              R=64,\\qquad\n              V=128,\n            \\]\n            corresponding in the present notation to\n            \\(C=512\\), \\(N=128\\), \\(R=64\\), \\(V=128\\)\n            \\((L_{\\mathrm{kv}}\\) there is the KV LoRA rank, not the query\n            length \\(L)\\).\n      \\item Lines \\(66\\)--\\(90\\) describe the compute-friendly path:\n            \\[\n              \\texttt{kv\\_c @ W\\_UK}\n              \\;\\equiv\\;\n              Z_b (W^K_h)^\\top,\n              \\qquad\n              \\texttt{kv\\_c @ W\\_UV}\n              \\;\\equiv\\;\n              Z_b (W^V_h)^\\top,\n            \\]\n            followed by ordinary attention over\n            \\[\n              [\\,Q^{\\mathrm n}_{bh},Q^{\\mathrm r}_{bh}\\,]\\in\\mathbb{R}^{L\\times T},\n              \\qquad\n              [\\,Z_b(W^K_h)^\\top,\\rho_b\\,]\\in\\mathbb{R}^{M\\times T},\n              \\qquad\n              Z_b(W^V_h)^\\top\\in\\mathbb{R}^{M\\times V}.\n            \\]\n      \\item Lines \\(94\\)--\\(118\\) describe the data-movement-friendly path:\n            absorb \\(W_UK\\) into the query,\n            attend with\n            \\[\n              [\\,Q^{\\mathrm n}_{bh}W^K_h,Q^{\\mathrm r}_{bh}\\,]\n              \\in\\mathbb{R}^{L\\times X}\n              \\quad\\text{against}\\quad\n              [\\,Z_b,\\rho_b\\,]\\in\\mathbb{R}^{M\\times X},\n            \\]\n            use value \\(Z_b\\in\\mathbb{R}^{M\\times C}\\), and then multiply by\n            \\(W_UV\\), i.e. by \\((W^V_h)^\\top\\) in row convention.\n      \\item Lines \\(826\\)--\\(852\\) view\n            \\[\n              \\texttt{kv\\_b\\_proj\\_weight}\n              \\quad\\text{as}\\quad\n              (C,H,N+V)=(C,H,Y),\n            \\]\n            and split the last dimension into the stored row-product blocks\n            \\(W_UK\\) and \\(W_UV\\), i.e. into\n            \\((W^K_h)^\\top\\) and \\((W^V_h)^\\top\\) for each head \\(h\\).\n      \\item Lines \\(951\\)--\\(961\\) return an\n            \\(\\texttt{MLAAttentionSpec}\\) with\n            \\[\n              \\texttt{num\\_kv\\_heads}=1,\n              \\qquad\n              \\texttt{head\\_size}\n              =\n              \\texttt{kv\\_lora\\_rank}\n              +\n              \\texttt{qk\\_rope\\_head\\_dim}\n              =\n              C+R=X.\n            \\]\n      \\end{itemize}\n\n\\item \\textbf{SGLang, commit \\texttt{a61a14f416c4003809a82112b4a591eec38a0a10}\n      \\((2026\\text{-}05\\text{-}09)\\).}\n      \\begin{itemize}\n      \\item In \\texttt{python/sglang/srt/models/deepseek\\_v2.py},\n            lines \\(1391\\)--\\(1399\\) construct\n            \\[\n              \\texttt{kv\\_b\\_proj}:\\mathbb{R}^{C}\\to\n              \\mathbb{R}^{H(N+V)}=\\mathbb{R}^{HY}.\n            \\]\n      \\item In the same file, lines \\(1431\\)--\\(1440\\) construct\n            \\(\\texttt{attn\\_mqa}\\) with\n            \\[\n              \\texttt{head\\_dim}=C+R=X,\n              \\qquad\n              \\texttt{num\\_kv\\_heads}=1,\n              \\qquad\n              \\texttt{v\\_head\\_dim}=C.\n            \\]\n            Thus the attention kernel consumes one KV head whose key is\n            \\([z,\\rho]\\) and whose value is the latent \\(z\\).\n      \\item In\n            \\texttt{python/sglang/srt/models/deepseek\\_common/attention\\_forward\\_methods/forward\\_mla.py},\n            lines \\(241\\)--\\(243\\) split \\(q\\) into \\(q_{\\mathrm{nope}}\\) and\n            \\(q_{\\mathrm{pe}}\\), and split the latent cache to obtain\n            \\(k_{\\mathrm{pe}}\\).  Lines \\(320\\)--\\(323\\) compute\n            \\[\n              q_{\\mathrm{nope,out}}\n              =\n              q_{\\mathrm{nope}} W_K\n              \\;\\equiv\\;\n              Q^{\\mathrm n}_{bh}W^K_h.\n            \\]\n            Lines \\(457\\)--\\(468\\) attend with\n            \\[\n              q=[\\,q_{\\mathrm{nope,out}},q_{\\mathrm{pe}}\\,],\n              \\qquad\n              k=[\\,k_{\\mathrm{nope}},k_{\\mathrm{pe}}\\,],\n              \\qquad\n              v=k_{\\mathrm{nope}},\n            \\]\n            where \\(k_{\\mathrm{nope}}\\) is the \\(C\\)-wide latent component.\n            Lines \\(472\\)--\\(592\\) up-project the latent context through \\(W_V\\)\n            and then apply \\(\\texttt{o\\_proj}\\).\n      \\item In\n            \\texttt{python/sglang/srt/mem\\_cache/memory\\_pool.py},\n            lines \\(1560\\)--\\(1567\\) allocate one KV buffer per layer with\n            physical shape\n            \\[\n              (\\texttt{size}+\\texttt{page\\_size},\\,1,\\,\n              \\texttt{kv\\_cache\\_dim}),\n            \\]\n            and lines \\(1630\\)--\\(1679\\) make\n            \\(\\texttt{set\\_mla\\_kv\\_buffer}\\) write\n            \\[\n              [\\,\\texttt{cache\\_k\\_nope},\\texttt{cache\\_k\\_rope}\\,]\n              \\;\\equiv\\;\n              [\\,z,\\rho\\,]\n            \\]\n            into that single buffer.\n      \\item In\n            \\texttt{python/sglang/srt/model\\_executor/model\\_runner\\_kv\\_cache\\_mixin.py},\n            lines \\(138\\)--\\(183\\) define the default MLA cache width\n            \\[\n              \\texttt{kv\\_cache\\_dim}\n              =\n              \\texttt{kv\\_lora\\_rank}\n              +\n              \\texttt{qk\\_rope\\_head\\_dim}\n              =\n              C+R=X,\n            \\]\n            with FP8/NSA storage exceptions.\n      \\end{itemize}\n\\end{itemize}\n\nConsequently, modulo paging and storage format,\n\\[\n  \\mathcal{C}^{\\mathrm{vLLM}}_{bm}\n  =\n  \\mathcal{C}^{\\mathrm{SGLang}}_{bm}\n  =\n  \\mathcal{C}^{\\mathrm{local}}_{bm}\n  =\n  [\\,z_{bm:},\\rho_{bm:}\\,]\\in\\mathbb{R}^{C+R}.\n\\]\n\n\\paragraph{Compute-friendly versus data-movement-friendly forms.}\nFor fixed \\(b,h\\), suppress \\(b,h\\) where unambiguous and set\n\\[\n  Z:=Z_b\\in\\mathbb{R}^{M\\times C},\n  \\qquad\n  \\rho:=\\rho_b\\in\\mathbb{R}^{M\\times R},\n  \\qquad\n  Q^{\\mathrm n}:=Q^{\\mathrm n}_{bh}\\in\\mathbb{R}^{L\\times N},\n  \\qquad\n  Q^{\\mathrm r}:=Q^{\\mathrm r}_{bh}\\in\\mathbb{R}^{L\\times R}.\n\\]\nThe two algorithms are:\n\\[\n\\begin{array}{rcll}\n\\text{compute-friendly:}\n&\nK_h^{\\mathrm n}\n&:=&\nZ(W^K_h)^\\top\n\\in\\mathbb{R}^{M\\times N},\n\\\\[2pt]\n&\nV_h\n&:=&\nZ(W^V_h)^\\top\n\\in\\mathbb{R}^{M\\times V},\n\\\\[2pt]\n&\nS_h^{\\mathrm{cf}}\n&:=&\nQ^{\\mathrm n}(K_h^{\\mathrm n})^\\top\n+\nQ^{\\mathrm r}\\rho^\\top\n\\in\\mathbb{R}^{L\\times M},\n\\\\[2pt]\n&\nO_h^{\\mathrm{cf}}\n&:=&\n\\operatorname{softmax}_{\\mathrm{row}}(S_h^{\\mathrm{cf}})\\,V_h\n\\in\\mathbb{R}^{L\\times V};\n\\\\[8pt]\n\\text{data-movement-friendly:}\n&\nQ'_h\n&:=&\nQ^{\\mathrm n}W^K_h\n\\in\\mathbb{R}^{L\\times C},\n\\\\[2pt]\n&\nS_h^{\\mathrm{dm}}\n&:=&\nQ'_h Z^\\top\n+\nQ^{\\mathrm r}\\rho^\\top\n\\in\\mathbb{R}^{L\\times M},\n\\\\[2pt]\n&\nG_h\n&:=&\n\\operatorname{softmax}_{\\mathrm{row}}(S_h^{\\mathrm{dm}})\\,Z\n\\in\\mathbb{R}^{L\\times C},\n\\\\[2pt]\n&\nO_h^{\\mathrm{dm}}\n&:=&\nG_h(W^V_h)^\\top\n\\in\\mathbb{R}^{L\\times V}.\n\\end{array}\n\\]\nEquivalently, the compute-friendly attention has query/key width\n\\(T=N+R\\), while the data-movement-friendly attention has query/key width\n\\(X=C+R\\) and value width \\(C\\).\n\n\\paragraph{Theorem (external MLA equivalence).}\nFix \\(b,h\\).  For each memory token \\(m\\) and query token \\(\\ell\\), using\ncolumn-vector notation for individual tokens,\n\\[\n  k_{hm}=W^K_h z_{bm}\\in\\mathbb{R}^{N},\n  \\qquad\n  v_{hm}=W^V_h z_{bm}\\in\\mathbb{R}^{V},\n  \\qquad\n  q'_{bh\\ell}=(W^K_h)^\\top q_{\\mathrm{nope},bh\\ell}\\in\\mathbb{R}^{C}.\n\\]\nThen the materialized path and the absorbed path have identical logits,\nidentical attention weights, and identical per-head context before\n\\(\\texttt{o\\_proj}\\).  In row-matrix form,\n\\[\n  S_h^{\\mathrm{cf}}\n  =\n  Q^{\\mathrm n}(K_h^{\\mathrm n})^\\top\n  +\n  Q^{\\mathrm r}\\rho^\\top\n  =\n  Q^{\\mathrm n}W^K_h Z^\\top\n  +\n  Q^{\\mathrm r}\\rho^\\top\n  =\n  Q'_h Z^\\top\n  +\n  Q^{\\mathrm r}\\rho^\\top\n  =\n  S_h^{\\mathrm{dm}}.\n\\]\nHence\n\\[\n  A_h\n  :=\n  \\operatorname{softmax}_{\\mathrm{row}}(S_h^{\\mathrm{cf}})\n  =\n  \\operatorname{softmax}_{\\mathrm{row}}(S_h^{\\mathrm{dm}})\n  \\in\\mathbb{R}^{L\\times M}.\n\\]\nAt the context level,\n\\[\n  O_h^{\\mathrm{cf}}\n  =\n  A_h V_h\n  =\n  A_h Z(W^V_h)^\\top\n  =\n  G_h(W^V_h)^\\top\n  =\n  O_h^{\\mathrm{dm}},\n  \\qquad\n  G_h:=A_hZ.\n\\]\nEquivalently, per query token,\n\\[\n  \\sum_{m=1}^{M} A_{h,\\ell m} v_{hm}\n  =\n  \\sum_{m=1}^{M} A_{h,\\ell m} W^V_h z_{bm}\n  =\n  W^V_h\n  \\left(\n    \\sum_{m=1}^{M} A_{h,\\ell m} z_{bm}\n  \\right).\n\\]\nThus, using the common implementation shorthand in which\n\\(zW^V_h\\) denotes the row-product \\(Z(W^V_h)^\\top\\),\n\\[\n  \\operatorname{softmax}_{\\mathrm{row}}\n  \\!\\left(\n    q_{\\mathrm{nope},h} k_h^\\top\n    +\n    q_{\\mathrm{rope},h}\\rho^\\top\n  \\right)\n  z W^V_h\n  =\n  \\operatorname{softmax}_{\\mathrm{row}}\n  \\!\\left(\n    q'_h z^\\top\n    +\n    q_{\\mathrm{rope},h}\\rho^\\top\n  \\right)\n  z W^V_h\n  =\n  O_h^{\\mathrm{cf}}\n  =\n  O_h^{\\mathrm{dm}}.\n\\]\nWith the declared mathematical shape \\(W^V_h\\in\\mathbb{R}^{V\\times C}\\),\nthe fully explicit row-matrix term is\n\\[\n  zW^V_h \\equiv Z(W^V_h)^\\top\\in\\mathbb{R}^{M\\times V}.\n\\]\nThe same proof applies with any common scalar attention scale and any common\nadditive attention mask inserted into both score matrices.  After concatenating\nthe \\(H\\) equal per-head contexts and applying the shared output projection,\nthe post-\\(\\texttt{o\\_proj}\\) outputs are therefore equal as well.\n\\hfill\\(\\mathrm{q.e.d.}\\)\n\n\\paragraph{Limitations of the external check.}\nThe cited external code also contains implementation features that are not part\nof the base real-valued MLA derivation:\n\\[\n  \\text{quantized storage/compute, e.g. FP8},\n  \\qquad\n  \\text{sparse or NSA modes},\n  \\qquad\n  \\text{paged-cache layout and page indexing},\n  \\qquad\n  \\text{kernel fusion, tiling, and scheduling}.\n\\]\nThese features may change storage dtype, physical address calculation, enabled\nattention pattern, or numerical kernel realization.  They do not change the\ndense base algebra above:\n\\[\n  \\mathcal{C}^{\\mathrm{MLA}}_{bm}=[\\,z_{bm:},\\rho_{bm:}\\,]\\in\\mathbb{R}^{C+R},\n  \\qquad\n  k_h=W^K_hz,\n  \\qquad\n  v_h=W^V_hz,\n  \\qquad\n  q'_h=(W^K_h)^\\top q_{\\mathrm{nope},h}.\n\\]\nAccordingly, quantization, NSA/sparsity, paging, and kernel details should be\nmodeled as separate storage, masking, or numerical-kernel layers, not folded\ninto the base MLA equivalence derivation.\n```",
+          "type": "output_text"
+        }
+      ],
+      "id": "msg_0f926c32f805960d0069fe8cd1ee34819d89951d05d2e65801",
+      "phase": "final_answer",
+      "role": "assistant",
+      "status": "completed",
+      "type": "message"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0.0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": "24h",
+  "reasoning": {
+    "effort": "medium",
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "status": "completed",
+  "store": true,
+  "temperature": 1.0,
+  "text": {
+    "format": {
+      "type": "text"
+    },
+    "verbosity": "high"
+  },
+  "tool_choice": "auto",
+  "tools": [],
+  "top_logprobs": 0,
+  "top_p": 0.98,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 1151,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 19434,
+    "output_tokens_details": {
+      "reasoning_tokens": 15381
+    },
+    "total_tokens": 20585
+  },
+  "user": null
+}

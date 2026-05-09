@@ -1,245 +1,939 @@
-\documentclass[]{book}
-\usepackage{xcolor}
-\usepackage{listings}
-\definecolor{ghblack}{HTML}{24292E}
-\definecolor{ghblue}{HTML}{0366D6}
-\definecolor{ghorange}{HTML}{E36209}
-\definecolor{ghpurple}{HTML}{6F42C1}
-\definecolor{ghgreen}{HTML}{22863A}
-\definecolor{ghgray}{HTML}{6A737D}
-\definecolor{ghbg}{HTML}{F6F8FA}
-\lstdefinestyle{githubpy}{
-    language=Python,
-    backgroundcolor=\color{ghbg},
-    basicstyle=\ttfamily\footnotesize\color{ghblack},
-    commentstyle=\color{ghgray},
-    keywordstyle=\color{ghpurple},
-    stringstyle=\color{ghblue},
-    numberstyle=\tiny\color{ghgray},
-    breakatwhitespace=false,
-    breaklines=true,
-    captionpos=b,
-    keepspaces=true,
-    numbers=left,
-    numbersep=5pt,
-    showspaces=false,
-    showstringspaces=false,
-    showtabs=false,
-    tabsize=4,
-    frame=single,
-    framesep=5pt,
-    framerule=0pt,
-    rulecolor=\color{ghgray},
-    identifierstyle=\color{ghblack},
-    emphstyle=\color{ghorange},
-    emph={self},
-    morekeywords={as, assert, break, class, continue, def, del, elif, else, except, finally, for, from, global, if, import, in, is, lambda, nonlocal, not, or, pass, raise, return, try, while, with, yield},
-}
-
-%These tell TeX which packages to use.
-\usepackage{array,epsfig}
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
 \usepackage{amsmath}
-\usepackage{amsfonts}
 \usepackage{amssymb}
-\usepackage{amsxtra}
-\usepackage{amsthm}
-\usepackage{mathrsfs}
-\usepackage{color}
-\usepackage{graphicx}
-\graphicspath{ {./images/} }
-%Here I define some theorem styles and shortcut commands for symbols I use often
-\theoremstyle{definition}
-\newtheorem{defn}{Definition}
-\newtheorem{thm}{Theorem}
-\newtheorem{cor}{Corollary}
-\newtheorem*{rmk}{Remark}
-\newtheorem{lem}{Lemma}
-\newtheorem*{joke}{Joke}
-\newtheorem{ex}{Example}
-\newtheorem*{soln}{Solution}
-\newtheorem{prop}{Proposition}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
 
-\newcommand{\lra}{\longrightarrow}
-\newcommand{\ra}{\rightarrow}
-\newcommand{\surj}{\twoheadrightarrow}
-\newcommand{\graph}{\mathrm{graph}}
-\newcommand{\bb}[1]{\mathbb{#1}}
-\newcommand{\Z}{\bb{Z}}
-\newcommand{\Q}{\bb{Q}}
-\newcommand{\R}{\bb{R}}
-\newcommand{\C}{\bb{C}}
-\newcommand{\N}{\bb{N}}
-\newcommand{\M}{\mathbf{M}}
-\newcommand{\m}{\mathbf{m}}
-\newcommand{\MM}{\mathscr{M}}
-\newcommand{\HH}{\mathscr{H}}
-\newcommand{\Om}{\Omega}
-\newcommand{\Ho}{\in\HH(\Om)}
-\newcommand{\bd}{\partial}
-\newcommand{\del}{\partial}
-\newcommand{\bardel}{\overline\partial}
-\newcommand{\textdf}[1]{\textbf{\textsf{#1}}\index{#1}}
-\newcommand{\img}{\mathrm{img}}
-\newcommand{\ip}[2]{\left\langle{#1},{#2}\right\rangle}
-\newcommand{\inter}[1]{\mathrm{int}{#1}}
-\newcommand{\exter}[1]{\mathrm{ext}{#1}}
-\newcommand{\cl}[1]{\mathrm{cl}{#1}}
-\newcommand{\ds}{\displaystyle}
-\newcommand{\vol}{\mathrm{vol}}
-\newcommand{\cnt}{\mathrm{ct}}
-\newcommand{\osc}{\mathrm{osc}}
-\newcommand{\LL}{\mathbf{L}}
-\newcommand{\UU}{\mathbf{U}}
-\newcommand{\support}{\mathrm{support}}
-\newcommand{\AND}{\;\wedge\;}
-\newcommand{\OR}{\;\vee\;}
-\newcommand{\Oset}{\varnothing}
-\newcommand{\st}{\ni}
-\newcommand{\wh}{\widehat}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\softmax}{\operatorname{softmax}}
+\newcommand{\LN}{\operatorname{LN}}
+\newcommand{\RoPE}{\operatorname{RoPE}}
+\newcommand{\elts}{\operatorname{elts}}
+\newcommand{\cache}{\mathcal{C}}
 
-%Pagination stuff.
-\setlength{\topmargin}{-.3 in}
-\setlength{\oddsidemargin}{0in}
-\setlength{\evensidemargin}{0in}
-\setlength{\textheight}{9.in}
-\setlength{\textwidth}{6.5in}
-\pagestyle{empty}
-
-
+\title{A Step-by-Step Source-Backed Derivation of DeepSeek-Style Multi-head Latent Attention}
+\author{Codex long-horizon MLA run}
+\date{2026-05-09}
 
 \begin{document}
-\subsection*{Low-rank compression for Q}
-\paragraph{}
-Given $h_t \in \mathbb{R}^{B \times L \times 5120}$, where $B$ is the batch size and $L$ is the sequence length. In DeepSeek-V2, the Q vector also adopts low-rank compression. First, the input vector is projected to a 1536-dimensional low-dimensional space:
-\begin{equation}
-    c_t^Q = W^{DQ} h_t \in \mathbb{R}^{B \times L \times 1536}
-\end{equation}
-\paragraph{}
-where, $W^{DQ} \in \mathbb{R}^{d_{c} \times d}$. $d$ is the hidden dimension ($5120$ in this case) and $d_{c}$ is the query compression dimension ($1536$ in this case)
-\paragraph{}
-Then, it is projected (decompression) to the $\mathbb{R}^{H \times 128}$ multi-head vector space (where $H=128$ is the number of heads), obtaining the first part of the Q vector:
-\begin{equation}
-    q_t^C = W^{UQ} c_t^Q \in \mathbb{R}^{B \times L \times H \times 128}
-\end{equation}
-\paragraph{}
-Next, it is projected to $\mathbb{R}^{H \times 64}$ and uses RoPE to embed position information, obtaining the second part of the Q vector:
-\begin{equation}
-    q_t^R = \mathrm{RoPE}(W^{KR} h_t) \in \mathbb{R}^{B \times L \times H \times 64} 
-\end{equation}
-\paragraph{}
-The two parts are concatenated to obtain the final Q vector:
-\begin{equation}
-    q_t = [q_t^C, q_t^R] \in \mathbb{R}^{B \times L \times H \times 192}
-\end{equation}
-\begin{lstlisting}[style=githubpy]
-q = self.q_b_proj(self.q_a_layernorm(self.q_a_proj(hidden_states)))
-q = q.view(bsz, q_len, self.num_heads, self.q_head_dim).transpose(1, 2)
-\end{lstlisting}
-\subsection*{Low-rank joint compression for K and V}
-\paragraph{}
-When computing the KV vector, the input vector first needs to be projected to a 512-dimensional joint compressed representation:
-\begin{equation}
-    c_t^{KV} = W^{DKV} h_t \in \mathbb{R}^{B \times L \times 512}
-\end{equation}
-\paragraph{}
-Similar to the computation process of the Q vector, the first part of the K vector is obtained by projecting $c_t^{KV}$ through decompression to the $\mathbb{R}^{H \times 128}$ multi-head vector space:
-\begin{equation}
-    k_t^C = W^{UK} c_t^{KV} \in \mathbb{R}^{B \times L \times H \times 128}
-\end{equation}
-\paragraph{}
-The second part of K is obtained by projecting the input vector to a 64-dimensional vector space and applying RoPE to embed position information:
-\begin{equation}
-    k_t^R = \mathrm{RoPE}(W^{KR} h_t) \in \mathbb{R}^{B \times L \times 64}
-\end{equation}
-\paragraph{}
-Unlike Q, the complete K is obtained by broadcasting the second part of K to each head and concatenating it with the first part:
-\begin{equation}
-     k_t = \begin{bmatrix}
-    k_{t,1}^C & k_t^R \\ 
-    k_{t,2}^C & k_t^R \\
-    \vdots & \vdots \\
-    \end{bmatrix} \in \mathbb{R}^{B \times L \times H \times 192}
-\end{equation}
-\paragraph{}
-That is, the RoPE part of each head is exactly the same.
-\paragraph{}
-The computation of the V vector is relatively simple, directly decompressing $c_t^{KV}$ to $\mathbb{R}^{H \times 128}$:
-\begin{equation}
-    v_t = W^{UV} c_t^{KV} \in \mathbb{R}^{B \times L \times H \times 128} 
-\end{equation}
-\paragraph{}
-The attention computation process is no different from traditional MHA. First, the attention score is computed:
-\begin{equation}
-a = \mathrm{softmax}\left(\frac{q_t^\top k_t + \mathrm{Mask}}{\sqrt{192}}\right) = 
-\mathrm{softmax}\left(\frac{{q_t^C}^\top k_t^C + {q_t^R}^\top k_t^R + \mathrm{Mask}}{\sqrt{128 + 64}} \right)
-\in \mathbb{R}^{B \times L \times H \times L}
-\end{equation}
-\paragraph{}
-The weighted sum of V is computed, and all heads are flattened to obtain the Attention output:
-\begin{equation}
-    o = a \cdot v_t \in \mathbb{R}^{B \times L \times H \times 128} \cong \mathbb{R}^{B \times L \times 16384}
-\end{equation}
-\paragraph{}
-After projection with another matrix, the final output of MLA is obtained:
-\begin{equation}
-    u = W^O o \in \mathbb{R}^{B \times L \times 5120}
-\end{equation}
-\paragraph{}
-\begin{lstlisting}[style=githubpy]
-def forward(...):
-    bsz, q_len, _ = hidden_states.size()
-    
-    # Compute Q: first reduce dimension then increase dimension
-    # Compared to directly using a matrix of size [5120, 24576], 
-    # the low-rank decomposition [5120, 1536] * [1536, 24576] greatly reduces storage space and computation
-    q = self.q_b_proj(self.q_a_layernorm(self.q_a_proj(hidden_states)))
-    q = q.view(bsz, q_len, self.num_heads, self.q_head_dim).transpose(1, 2)
-    # Split rope and non-rope parts
-    q_nope, q_pe = torch.split(
-        q, [self.qk_nope_head_dim, self.qk_rope_head_dim], dim=-1
-    )
-    
-    # Compute KV
-    # An optimized MLA KVCache implementation only needs to cache this compressed_kv, but it is actually expanded later
-    compressed_kv = self.kv_a_proj_with_mqa(hidden_states)
-    # Here compressed_kv corresponds to c_t^{KV} in the formula
-    compressed_kv, k_pe = torch.split(
-        compressed_kv, [self.kv_lora_rank, self.qk_rope_head_dim], dim=-1
-    )
-    k_pe = k_pe.view(bsz, q_len, 1, self.qk_rope_head_dim).transpose(1, 2)
-    # Expand MLA to the standard MHA form
-    kv = (
-        self.kv_b_proj(self.kv_a_layernorm(compressed_kv))
-        .view(bsz, q_len, self.num_heads, self.qk_nope_head_dim + self.v_head_dim)
-        .transpose(1, 2)
-    )
-    # Since kv_b_proj packs W^{UK} and W^{UV} together, separate them
-    k_nope, value_states = torch.split(
-        kv, [self.qk_nope_head_dim, self.v_head_dim], dim=-1
-    )
-    ...
-    # Add rope to the parts that need rope
-    q_pe, k_pe = apply_rotary_pos_emb(q_pe, k_pe, cos, sin, position_ids)
-    
-    # Update and concatenate historical KVCache
-    # It can be seen that the expanded MHA KVCache is stored here
-    # where q_head_dim equals qk_nope_head_dim + qk_rope_head_dim
-    query_states = k_pe.new_empty(bsz, self.num_heads, q_len, self.q_head_dim)
-    query_states[:, :, :, : self.qk_nope_head_dim] = q_nope
-    query_states[:, :, :, self.qk_nope_head_dim :] = q_pe
-    key_states = k_pe.new_empty(bsz, self.num_heads, q_len, self.q_head_dim)
-    key_states[:, :, :, : self.qk_nope_head_dim] = k_nope
-    key_states[:, :, :, self.qk_nope_head_dim :] = k_pe
-    if past_key_value is not None:
-        cache_kwargs = {"sin": sin, "cos": cos}  # Specific to RoPE models
-        key_states, value_states = past_key_value.update(
-            key_states, value_states, self.layer_idx, cache_kwargs
-        )
+\maketitle
 
-    # The subsequent code is the standard MHA code, no need to elaborate
-    ...
-\end{lstlisting}
+\section{Evidence Boundary}
+
+This document formalizes the Multi-head Latent Attention (MLA) algebra used by
+the local DeepSeek-V2 profile under
+\path{math/mla/deepseekv2-profile}.  The source hierarchy is recorded in
+\path{math/mla/source_ledger.md}; exact vLLM/SGLang comparison pins are recorded
+in \path{math/mla/external_sources.md}; shape notation is recorded in
+\path{math/mla/notation.md}.
+
+The executable target for the core derivation is the simplified local algebra:
+no attention mask, dropout disabled, and base RoPE.  The full model contains
+masking, past-cache mutation, dropout, and optional YaRN scaling.  Those
+full-model details are important runtime features, but the equality proofs below
+concern the shared algebra after the same query tensors, compressed KV latent,
+and rotated key RoPE suffix have been produced.
+
+\section{Derivation Roadmap}
+
+The derivation proceeds in increasing specificity.  First, ordinary attention
+is fixed as a template.  Next, MHA, MQA, and GQA are used only to explain cache
+accounting.  Then MLA is derived in ten steps:
+\[
+\begin{array}{rl}
+1. & \text{define the low-rank projection maps;}\\
+2. & \text{derive the query path and split it into non-RoPE and RoPE parts;}\\
+3. & \text{derive the KV path and the compressed cache }[z,\rho];\\
+4. & \text{materialize ordinary attention from the MLA tensors;}\\
+5. & \text{absorb the non-RoPE key projection into the query side;}\\
+6. & \text{keep RoPE separate because it is position dependent;}\\
+7. & \text{check that pinned external implementations use the same algebra;}\\
+8. & \text{state the executable shape assertions;}\\
+9. & \text{work a two-head numerical example by hand;}\\
+10. & \text{record the validation results and open limits.}
+\end{array}
+\]
+Every equality promoted as an algebraic identity is either proved directly in
+finite-dimensional notation or tied to an executable parity check.
+
+\section{Dimensions}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lp{0.42\linewidth}l@{}}
+\toprule
+Symbol & Meaning & DeepSeek-V2 profile value \\
+\midrule
+$B$ & batch size & runtime \\
+$L$ & query sequence length & runtime \\
+$M$ & memory / key-value sequence length & runtime \\
+$D$ & model hidden dimension & $5120$ \\
+$H$ & number of query heads & $128$ \\
+$N$ & non-RoPE query/key head dimension & $128$ \\
+$R$ & RoPE query/key suffix dimension & $64$ \\
+$V$ & materialized value head dimension & $128$ \\
+$Q$ & query compression rank & $1536$ \\
+$C$ & KV compression rank & $512$ \\
+$T$ & full query/key head width, $T=N+R$ & $192$ \\
+$X$ & packed KV down-projection width, $X=C+R$ & $576$ \\
+$Y$ & packed KV up-projection width per head, $Y=N+V$ & $256$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Verification artifacts use shape suffixes built from these letters; in the
+derivation itself, shapes are written explicitly.
+For an integer $n$, write $[n]=\{1,\ldots,n\}$.
+
+\section{Orientation and Algebraic Assumptions}
+
+All token vectors below are treated as row vectors.  A linear map
+\[
+  P:\R^a\to\R^b
+\]
+acts on the last dimension and produces row vectors in $\R^b$.  This convention
+matches the tensor layout used in the shape assertions while keeping the
+mathematical maps explicit.  In particular, for each head $h$,
+\[
+  W^K_h\in\R^{N\times C},
+  \qquad
+  W^V_h\in\R^{V\times C},
+\]
+so a latent row vector $z_m\in\R^{1\times C}$ materializes as
+\[
+  k^{\mathrm n}_{h,m}=z_m(W^K_h)^\top\in\R^{1\times N},
+  \qquad
+  v_{h,m}=z_m(W^V_h)^\top\in\R^{1\times V}.
+\]
+
+The proof below uses the following assumptions.
+\begin{enumerate}
+  \item The equations are for one attention layer; layer indices are omitted.
+  \item Dropout is disabled and all layer normalizations are evaluated
+        identically in the materialized and absorbed paths.
+  \item The key and value up-projection matrices $W^K_h,W^V_h$ are static and
+        position independent.  The base formulas treat these maps as linear.
+  \item RoPE is applied identically in both paths.  Base RoPE is assumed in the
+        executable reference checks; variants such as YaRN are listed as limits
+        unless separately tested.
+  \item The attention scale is inherited from the materialized query/key width:
+        $1/\sqrt{T}=1/\sqrt{N+R}$.  The absorbed path attends to a
+        $(C+R)$-wide cache object, but the scale is not changed to
+        $1/\sqrt{C+R}$.
+  \item The simplified verifier uses no mask.  If a shared additive mask
+        $\mu_{b,\ell,m}$ is added to both forms of the logits, equality of
+        logits before masking implies equality after masking.
+  \item Symbolic equalities are real-arithmetic equalities.  Executable checks
+        are floating-point parity checks and are therefore judged with explicit
+        tolerances.
+\end{enumerate}
+
+\section{Attention Template}
+
+Before specializing to MLA, fix the ordinary attention calculation that all
+variants reuse.  For a batch element $b$ and head $h$, suppose
+\[
+  Q_{bh}\in\R^{L\times T},
+  \qquad
+  K_{bh}\in\R^{M\times T},
+  \qquad
+  V_{bh}\in\R^{M\times V}.
+\]
+The score, attention, and context matrices are
+\[
+  S_{bh}
+  =
+  \frac{Q_{bh}K_{bh}^{\top}}{\sqrt{T}}
+  \in\R^{L\times M},
+\]
+\[
+  A_{bh}
+  =
+  \softmax_{\mathrm{row}}(S_{bh})
+  \in\R^{L\times M},
+\]
+\[
+  O_{bh}
+  =
+  A_{bh}V_{bh}
+  \in\R^{L\times V}.
+\]
+After all heads are computed, the per-head contexts are concatenated to
+\[
+  O_b\in\R^{L\times HV}
+\]
+and projected back to the model dimension by an output map
+\[
+  P_o:\R^{HV}\to\R^D.
+\]
+
+This template separates two questions.  First, how are $Q,K,V$ produced?
+Second, what must be cached during autoregressive generation?  MHA, MQA, GQA,
+and MLA differ mainly in the answer to those two questions.
+
+\section{Cache Ladder}
+
+For one layer, define the scalar cache count per memory token per batch element
+as
+\[
+  e(\cache)=\frac{\elts(\cache)}{BM}.
+\]
+This count ignores dtype bytes and page padding; bytes are obtained by
+multiplying by the dtype size and any backend-specific storage overhead.
+
+\subsection{MHA}
+
+Standard multi-head attention stores separate key and value streams for every
+query head:
+\[
+  K^{\mathrm{mha}}\in\R^{B\times H\times M\times T},
+  \qquad
+  V^{\mathrm{mha}}\in\R^{B\times H\times M\times V}.
+\]
+Therefore
+\[
+\begin{aligned}
+  e(\cache_{\mathrm{mha}})
+  &=\frac{B H M T + B H M V}{B M}  \\
+  &=H(T+V).
+\end{aligned}
+\]
+For the DeepSeek-V2 dimensions this is
+\[
+  128(192+128)=40960
+\]
+scalars per token per layer.
+
+\subsection{MQA}
+
+Multi-query attention keeps $H$ query heads but shares one KV stream:
+\[
+  K^{\mathrm{mqa}}\in\R^{B\times 1\times M\times T},
+  \qquad
+  V^{\mathrm{mqa}}\in\R^{B\times 1\times M\times V}.
+\]
+The cache count is
+\[
+  e(\cache_{\mathrm{mqa}})=T+V.
+\]
+For the profile values this is $192+128=320$.
+
+\subsection{GQA}
+
+Grouped-query attention has $G$ KV groups serving $H$ query heads.  If $G$
+divides $H$, write
+\[
+  g(h)=1+\left\lfloor\frac{h-1}{H/G}\right\rfloor .
+\]
+The cache is
+\[
+  K^{\mathrm{gqa}}\in\R^{B\times G\times M\times T},
+  \qquad
+  V^{\mathrm{gqa}}\in\R^{B\times G\times M\times V},
+\]
+so
+\[
+  e(\cache_{\mathrm{gqa}})=G(T+V).
+\]
+MHA is the endpoint $G=H$; MQA is the endpoint $G=1$.
+
+\subsection{MLA}
+
+If MLA materialized and cached all per-head keys and values, its cache would
+again be
+\[
+  H(T+V)=H(N+R+V).
+\]
+Because the MLA RoPE suffix is shared across heads, a useful intermediate
+comparison is a semi-materialized cache that stores head-specific non-RoPE keys
+and values but stores the shared RoPE suffix once:
+\[
+  H(N+V)+R.
+\]
+For the DeepSeek-V2 profile this semi-materialized count is
+\[
+  128(128+128)+64=32832.
+\]
+The compressed MLA cache instead stores only a normalized KV latent and a shared
+key RoPE suffix:
+\[
+  \cache_{\mathrm{mla}}
+  =
+  [z,\rho]
+  \in\R^{B\times M\times(C+R)}.
+\]
+Thus
+\[
+  e(\cache_{\mathrm{mla}})=C+R.
+\]
+For the DeepSeek-V2 profile this is
+\[
+  512+64=576
+\]
+scalars per token per layer.  This is larger than MQA's scalar count in the same
+dimensions, but it retains head-specific key and value up-projections through
+$W^K_h$ and $W^V_h$ instead of forcing a single materialized KV head.
+
+\begin{center}
+\small
+\begin{tabular}{lll}
+\toprule
+Design & Cache contents & Scalars per token \\
+\midrule
+MHA & per-head $K,V$ & $H(T+V)=40960$ \\
+MQA & shared $K,V$ & $T+V=320$ \\
+GQA & $G$ grouped $K,V$ & $G(T+V)$ \\
+Materialized MLA & per-head constructed $K,V$ & $H(T+V)=40960$ \\
+Semi-materialized MLA & per-head non-RoPE $K,V$ plus shared $\rho$ & $H(N+V)+R=32832$ \\
+Compressed MLA & latent $z$ plus suffix $\rho$ & $C+R=576$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+This table is the first key point: MLA is not just MQA with different
+dimensions.  It stores one shared latent object, but that latent is later
+expanded through head-specific maps, so the resulting materialized keys and
+values can still be head dependent.
+
+\section{Step 1: Low-Rank Projection Maps}
+
+Let
+\[
+  h^q\in\R^{B\times L\times D},
+  \qquad
+  h^{kv}\in\R^{B\times M\times D}.
+\]
+The learned maps are
+\[
+  P_{q,a}:\R^D\to\R^Q,\qquad
+  P_{q,b}:\R^Q\to\R^{H T},
+\]
+\[
+  P_{kv,a}:\R^D\to\R^{C+R},\qquad
+  P_{kv,b}:\R^C\to\R^{H(N+V)},\qquad
+  P_o:\R^{H V}\to\R^D.
+\]
+The layer normalizations act on the last dimension:
+\[
+  \LN_q:\R^Q\to\R^Q,\qquad
+  \LN_{kv}:\R^C\to\R^C.
+\]
+The source ledger maps these abstract projections to local implementation
+modules.  The derivation below uses only their mathematical domains and
+codomains.
+
+\section{Step 2: Query Path}
+
+The local query path is
+\[
+  q^{\mathrm{lat}}=\LN_q(P_{q,a}(h^q))
+  \in\R^{B\times L\times Q},
+\]
+\[
+  \bar q=P_{q,b}(q^{\mathrm{lat}})
+  \in\R^{B\times L\times H T}.
+\]
+Viewing the packed last dimension as heads gives
+\[
+  q^{\mathrm{full}}_{b,h,\ell,t}
+  =
+  \bar q_{b,\ell,(h-1)T+t}
+  \in\R^{B\times H\times L\times T}.
+\]
+Split
+\[
+  q^{\mathrm{full}}=[q^{\mathrm n},q^{\mathrm r,raw}],
+\]
+where
+\[
+  q^{\mathrm n}\in\R^{B\times H\times L\times N},
+  \qquad
+  q^{\mathrm r,raw}\in\R^{B\times H\times L\times R}.
+\]
+For query position id $p^q_\ell$, RoPE acts only on the suffix:
+\[
+  q^{\mathrm r}_{b,h,\ell,:}
+  =
+  \RoPE_{p^q_\ell}(q^{\mathrm r,raw}_{b,h,\ell,:})
+  \in\R^R.
+\]
+The full query used by materialized attention is
+\[
+  Q_{b,h,\ell,:}=[q^{\mathrm n}_{b,h,\ell,:},q^{\mathrm r}_{b,h,\ell,:}]
+  \in\R^T.
+\]
+
+The query RoPE suffix is therefore produced by the query low-rank path and then
+rotated.  It is not produced by the KV RoPE projection.
+
+\section{Step 3: KV Path and Compressed Cache}
+
+The packed KV down-projection is
+\[
+  u=P_{kv,a}(h^{kv})\in\R^{B\times M\times(C+R)}.
+\]
+Split it as
+\[
+  u=[c,k^{\mathrm r,raw}],
+  \qquad
+  c\in\R^{B\times M\times C},
+  \qquad
+  k^{\mathrm r,raw}\in\R^{B\times M\times R}.
+\]
+Normalize the latent and rotate the RoPE suffix:
+\[
+  z=\LN_{kv}(c)\in\R^{B\times M\times C},
+\]
+\[
+  \rho_{b,m,:}=
+  \RoPE_{p^{kv}_m}(k^{\mathrm r,raw}_{b,m,:})
+  \in\R^R.
+\]
+The compressed cache token is
+\[
+  \cache_{b,m,:}=[z_{b,m,:},\rho_{b,m,:}]\in\R^{C+R}.
+\]
+
+The packed KV up-projection weight can be viewed per head as
+\[
+  W^{KV}\in\R^{H\times(N+V)\times C}.
+\]
+For a latent row vector $z_m$, write
+\[
+  \bar w_{h,j}
+  =
+  \sum_{c=1}^C W^{KV}_{h,j,c}z_{m,c},
+  \qquad
+  h\in[H],\ j\in[N+V].
+\]
+Split
+\[
+  W^K_h\in\R^{N\times C},
+  \qquad
+  W^V_h\in\R^{V\times C}.
+\]
+Materialized non-RoPE keys and values are
+\[
+  k^{\mathrm n}_{b,h,m,n}
+  =
+  \sum_{c=1}^C W^K_{h,n,c}z_{b,m,c}
+  \in\R^{B\times H\times M\times N},
+\]
+\[
+  v_{b,h,m,\nu}
+  =
+  \sum_{c=1}^C W^V_{h,\nu,c}z_{b,m,c}
+  \in\R^{B\times H\times M\times V}.
+\]
+The full materialized key is
+\[
+  K_{b,h,m,:}=[k^{\mathrm n}_{b,h,m,:},\rho_{b,m,:}]
+  \in\R^T,
+\]
+where $\rho$ is broadcast across heads.
+
+\section{Step 4: Materialized MLA Forward Pass}
+
+For $b\in[B]$, $h\in[H]$, query position $\ell\in[L]$, and memory position
+$m\in[M]$, materialized MLA first constructs ordinary attention vectors
+\[
+  Q_{b,h,\ell,:}
+  =
+  [q^{\mathrm n}_{b,h,\ell,:},q^{\mathrm r}_{b,h,\ell,:}]
+  \in\R^T,
+\]
+\[
+  K_{b,h,m,:}
+  =
+  [k^{\mathrm n}_{b,h,m,:},\rho_{b,m,:}]
+  \in\R^T,
+\]
+and
+\[
+  V_{b,h,m,:}=v_{b,h,m,:}\in\R^V.
+\]
+The ordinary unnormalized attention score is
+\[
+  r_{b,h,\ell,m}
+  =
+  \langle Q_{b,h,\ell,:},K_{b,h,m,:}\rangle .
+\]
+Because $Q$ and $K$ are concatenations of non-RoPE and RoPE coordinates, this
+score decomposes as
+\[
+  r_{b,h,\ell,m}
+  =
+  \left\langle q^{\mathrm n}_{b,h,\ell,:},k^{\mathrm n}_{b,h,m,:}\right\rangle
+  +
+  \left\langle q^{\mathrm r}_{b,h,\ell,:},\rho_{b,m,:}\right\rangle .
+\]
+The scaled score is
+\[
+  s_{b,h,\ell,m}=\frac{r_{b,h,\ell,m}}{\sqrt{T}}.
+\]
+The simplified local verifier uses no mask.  If a shared additive mask
+$\mu_{b,\ell,m}$ is present, it is added to the same logits in both forms below
+and does not change the algebraic equivalence.
+
+Attention probabilities are
+\[
+  a_{b,h,\ell,m}
+  =
+  \frac{\exp(s_{b,h,\ell,m})}
+       {\sum_{j=1}^M \exp(s_{b,h,\ell,j})}.
+\]
+The materialized context and output projection are
+\[
+  o_{b,h,\ell,\nu}
+  =
+  \sum_{m=1}^M a_{b,h,\ell,m}v_{b,h,m,\nu}
+  \in\R^{B\times H\times L\times V},
+\]
+\[
+  y_{b,\ell,:}
+  =
+  P_o\!\left(\operatorname{flatten}_H(o_{b,:, \ell,:})\right)
+  \in\R^D.
+\]
+
+\section{Step 5: Projection Absorption}
+
+\subsection{Key-Side Absorption}
+
+The non-RoPE score can be evaluated without materializing
+$k^{\mathrm n}$.  Define the absorbed query latent
+\[
+  q'_{b,h,\ell,c}
+  =
+  \sum_{n=1}^N q^{\mathrm n}_{b,h,\ell,n} W^K_{h,n,c}
+  =
+  \left(q^{\mathrm n}_{b,h,\ell,:} W^K_h\right)_c
+  \in\R^C.
+\]
+Then
+\[
+\begin{aligned}
+  \left\langle q^{\mathrm n}_{b,h,\ell,:}, k^{\mathrm n}_{b,h,m,:}\right\rangle
+  &=
+  \sum_{n=1}^N q^{\mathrm n}_{b,h,\ell,n}
+      \sum_{c=1}^C W^K_{h,n,c}z_{b,m,c} \\
+  &=
+  \sum_{c=1}^C
+      \left(\sum_{n=1}^N q^{\mathrm n}_{b,h,\ell,n}W^K_{h,n,c}\right)
+      z_{b,m,c} \\
+  &=
+  \left\langle q'_{b,h,\ell,:},z_{b,m,:}\right\rangle .
+\end{aligned}
+\]
+Thus the absorbed score is
+\[
+  r'_{b,h,\ell,m}
+  =
+  \left\langle q'_{b,h,\ell,:},z_{b,m,:}\right\rangle
+  +
+  \left\langle q^{\mathrm r}_{b,h,\ell,:},\rho_{b,m,:}\right\rangle,
+\]
+and $r'=r$ exactly in real arithmetic.
+
+\subsection{Delayed Value Up-Projection}
+
+After softmax, compute a latent context
+\[
+  g_{b,h,\ell,c}=\sum_{m=1}^M a_{b,h,\ell,m}z_{b,m,c}
+  \in\R^{B\times H\times L\times C}.
+\]
+The value-side up-projection can then be applied after the memory sum:
+\[
+\begin{aligned}
+  \sum_{c=1}^C W^V_{h,\nu,c}g_{b,h,\ell,c}
+  &=
+  \sum_{c=1}^C W^V_{h,\nu,c}
+    \sum_{m=1}^M a_{b,h,\ell,m}z_{b,m,c} \\
+  &=
+  \sum_{m=1}^M a_{b,h,\ell,m}
+    \sum_{c=1}^C W^V_{h,\nu,c}z_{b,m,c} \\
+  &=
+  \sum_{m=1}^M a_{b,h,\ell,m}v_{b,h,m,\nu}
+  =
+  o_{b,h,\ell,\nu}.
+\end{aligned}
+\]
+The absorbed and materialized forms therefore produce the same pre-output
+context, and hence the same final $P_o$ output, up to floating-point evaluation
+order.
+
+\section{Step 6: Why RoPE Is Separated}
+
+The absorption step uses a static weight $W^K_h$ and an unrotated latent
+$z_{b,m,:}$:
+\[
+  q^{\mathrm n}\!\left(z_m(W^K_h)^\top\right)^\top
+  =
+  q^{\mathrm n}W^K_h z_m^\top
+  =
+  (q^{\mathrm n} W^K_h) z_m^\top.
+\]
+This rearrangement is possible because the non-RoPE key map is linear and
+position independent.  The RoPE term is position dependent:
+\[
+  \left\langle
+    \RoPE_{p^q_\ell}(q^{\mathrm r,raw}_{b,h,\ell,:}),
+    \RoPE_{p^{kv}_m}(k^{\mathrm r,raw}_{b,m,:})
+  \right\rangle .
+\]
+It is therefore kept as an explicit $R$-dimensional suffix $\rho_{b,m,:}$ in
+the cache.  The compressed cache is not merely $z\in\R^C$; it is
+$[z,\rho]\in\R^{C+R}$.
+
+A sharper way to see the obstruction is to write RoPE as a position-dependent
+orthogonal block rotation
+\[
+  \RoPE_p(x)=\mathcal R_p x,
+  \qquad
+  \mathcal R_p\in\R^{R\times R}.
+\]
+For query position $p^q$ and key position $p^{kv}$,
+\[
+  \langle \mathcal R_{p^q}x,\mathcal R_{p^{kv}}y\rangle
+  =
+  x^\top \mathcal R_{p^q}^{\top}\mathcal R_{p^{kv}}y.
+\]
+The middle matrix depends on the relative position.  A single static projection
+could absorb the RoPE term for all query/key positions only if
+\[
+  A=\mathcal R_{p^q}^{\top}\mathcal R_{p^{kv}}
+\]
+were the same matrix for all $(p^q,p^{kv})$, which is false for non-degenerate
+RoPE.  The usual relative-position identity is useful, but it is not a static
+head weight that can be folded into $W^K_h$.
+
+\section{Step 7: External Implementation Check}
+
+\paragraph{Source-backed facts.}
+The pinned vLLM snapshot independently describes the same two algorithms:
+the compute-friendly path materializes
+\[
+  k^{\mathrm n}=z(W^K)^\top,\qquad v=z(W^V)^\top,
+\]
+then runs ordinary multi-head attention; the data-movement-friendly path forms
+$q'=q^{\mathrm n}W^K$, attends against the latent cache $z$, and applies
+$W^V$ after attention.  Its MLA cache spec uses one KV head and semantic cache
+width $C+R$.
+
+The pinned SGLang snapshot implements the same absorbed decode shape through an
+MQA-style attention object with head dimension $C+R$, one KV head, and value
+head dimension $C$.  Its memory pool allocates one MLA KV buffer per layer and
+writes the latent part followed by the RoPE suffix into that single buffer.  The
+default symbolic cache width is $C+R$, with separate FP8/NSA storage
+exceptions.
+
+\paragraph{Runtime shape contract.}
+A runtime vLLM probe was also executed with a one-layer DeepSeek-V2 config and
+dummy weights, so no official weights were downloaded.  With the profile
+dimensions, the observed attention inputs had shapes
+\[
+  \R^{S\times H\times T}
+  =
+  \R^{S\times128\times192},
+  \qquad
+  \R^{S\times C}
+  =
+  \R^{S\times512},
+  \qquad
+  \R^{S\times1\times R}
+  =
+  \R^{S\times1\times64}.
+\]
+The recorded module dimensions were
+\[
+\begin{aligned}
+  H&=128,&
+  C&=512,&
+  N&=128,\\
+  R&=64,&
+  X&=C+R=576.&
+\end{aligned}
+\]
+The generated pre-output tensor had width $128\cdot128=16384=HV$, consistent
+with concatenating all materialized value heads before the output projection.
+
+\paragraph{Mathematical contract.}
+For each fixed $(b,h,\ell)$, let
+\[
+  \alpha_m
+  =
+  \softmax_m\!\left(
+    \frac{
+      q^{\mathrm n}W^K_h z_m^\top
+      +
+      q^{\mathrm r}\rho_m^\top
+    }{\sqrt{T}}
+  \right).
+\]
+The compute-friendly output is
+\[
+  o^{\mathrm{mat}}_\nu
+  =
+  \sum_{m=1}^M \alpha_m
+  \sum_{c=1}^C W^V_{h,\nu,c}z_{m,c}.
+\]
+The data-movement-friendly output is
+\[
+  o^{\mathrm{abs}}_\nu
+  =
+  \sum_{c=1}^C W^V_{h,\nu,c}
+  \sum_{m=1}^M \alpha_m z_{m,c}.
+\]
+By exchanging the finite sums,
+\[
+  o^{\mathrm{mat}}_\nu=o^{\mathrm{abs}}_\nu.
+\]
+The logits defining $\alpha_m$ are also identical because
+\[
+  q^{\mathrm n}W^K_h z_m^\top
+  =
+  (q^{\mathrm n}W^K_h)z_m^\top.
+\]
+This is exactly the algebraic object both external implementations optimize.
+Paged-cache tables, quantized cache layouts, sparse/NSA indexers, CUDA graph
+constraints, and specialized kernels change storage or execution strategy, not
+the base equalities above.
+
+\section{Step 8: Executable Shape Assertions}
+
+The verification scripts assert the following mathematical shape evolution.
+The query path is
+\[
+\begin{array}{rcl}
+  h^q\in\R^{B\times L\times D}
+  &\longmapsto&
+  q^{\mathrm{lat}}\in\R^{B\times L\times Q}
+  \longmapsto
+  q^{\mathrm{full}}\in\R^{B\times H\times L\times T},
+  \\[2pt]
+  q^{\mathrm{full}}
+  &\longmapsto&
+  q^{\mathrm n}\in\R^{B\times H\times L\times N},
+  \quad
+  q^{\mathrm r}\in\R^{B\times H\times L\times R}.
+\end{array}
+\]
+The KV path is
+\[
+\begin{array}{rcl}
+  h^{kv}\in\R^{B\times M\times D}
+  &\longmapsto&
+  u\in\R^{B\times M\times(C+R)}
+  \longmapsto
+  z\in\R^{B\times M\times C},
+  \quad
+  \rho\in\R^{B\times M\times R},
+  \\[2pt]
+  [z,\rho]
+  &\in&
+  \R^{B\times M\times(C+R)}.
+\end{array}
+\]
+The materialized path asserts
+\[
+\begin{array}{rcl}
+  z
+  &\longmapsto&
+  k^{\mathrm n}\in\R^{B\times H\times M\times N},
+  \quad
+  v\in\R^{B\times H\times M\times V},
+  \\[2pt]
+  [q^{\mathrm n},q^{\mathrm r}]
+  &\in&
+  \R^{B\times H\times L\times T},
+  \\[2pt]
+  [k^{\mathrm n},\rho]
+  &\in&
+  \R^{B\times H\times M\times T},
+  \\[2pt]
+  s
+  &\in&
+  \R^{B\times H\times L\times M},
+  \\[2pt]
+  o
+  &\in&
+  \R^{B\times H\times L\times V},
+  \qquad
+  y\in\R^{B\times L\times D}.
+\end{array}
+\]
+The absorbed path asserts
+\[
+\begin{array}{rcl}
+  q'
+  &\in&
+  \R^{B\times H\times L\times C},
+  \\[2pt]
+  [q',q^{\mathrm r}]
+  &\text{attends against}&
+  [z,\rho]\in\R^{B\times M\times(C+R)},
+  \\[2pt]
+  g
+  &\in&
+  \R^{B\times H\times L\times C},
+  \\[2pt]
+  g(W^V_h)^\top
+  &\in&
+  \R^{B\times H\times L\times V},
+  \qquad
+  y\in\R^{B\times L\times D}.
+\end{array}
+\]
+
+\section{Step 9: A Two-Head Manual Forward Pass}
+
+This example is intentionally small enough to check by hand.  Let
+\[
+  B=1,\quad L=1,\quad M=2,\quad D=2,\quad H=2,
+  \quad Q=C=1,\quad N=V=1,\quad R=2.
+\]
+Then $T=N+R=3$.  Choose zero RoPE suffixes so that the RoPE-shaped tensors are
+present but contribute zero to the score:
+\[
+  q^{\mathrm r}=0,\qquad \rho_1=\rho_2=0.
+\]
+Let the compressed memory latents be
+\[
+  z_1=1,\qquad z_2=2.
+\]
+Let the two non-RoPE query scalars be
+\[
+  q^{\mathrm n}_{h=1}=2,\qquad q^{\mathrm n}_{h=2}=-1.
+\]
+Choose per-head up-projection scalars
+\[
+  W^K_1=1,\quad W^V_1=2,
+  \qquad
+  W^K_2=-1,\quad W^V_2=1.
+\]
+The materialized keys and values are
+\[
+  k^{\mathrm n}_1=(1,2),\qquad v_1=(2,4),
+\]
+\[
+  k^{\mathrm n}_2=(-1,-2),\qquad v_2=(1,2).
+\]
+The scale is $1/\sqrt{3}$.  Head 1 scores are
+\[
+  s_1=\left(\frac{2}{\sqrt{3}},\frac{4}{\sqrt{3}}\right)
+  \approx(1.1547,2.3094),
+\]
+so
+\[
+  a_1=\softmax(s_1)\approx(0.2396,0.7604),
+\]
+and
+\[
+  o_1=0.2396\cdot2+0.7604\cdot4\approx3.5208.
+\]
+Head 2 scores are
+\[
+  s_2=\left(\frac{1}{\sqrt{3}},\frac{2}{\sqrt{3}}\right)
+  \approx(0.5774,1.1547),
+\]
+so
+\[
+  a_2=\softmax(s_2)\approx(0.3595,0.6405),
+\]
+and
+\[
+  o_2=0.3595\cdot1+0.6405\cdot2\approx1.6405.
+\]
+The absorbed form gives the same numbers without materializing the non-RoPE
+keys.  Its absorbed query scalars are
+\[
+  q'_1=q^{\mathrm n}_1W^K_1=2,\qquad
+  q'_2=q^{\mathrm n}_2W^K_2=1.
+\]
+Thus the logits are unchanged:
+\[
+  q'_1(z_1,z_2)=(2,4),
+  \qquad
+  q'_2(z_1,z_2)=(1,2),
+\]
+before applying the common scale $1/\sqrt{3}$.  The latent contexts are
+\[
+  g_1=0.2396\cdot1+0.7604\cdot2\approx1.7604,
+  \qquad
+  g_2=0.3595\cdot1+0.6405\cdot2\approx1.6405.
+\]
+Applying the value-side weights after the sum gives
+\[
+  W^V_1g_1\approx2\cdot1.7604=3.5208,
+  \qquad
+  W^V_2g_2\approx1\cdot1.6405=1.6405.
+\]
+With identity output projection,
+\[
+  y\approx(3.5208,1.6405)\in\R^{1\times1\times2}.
+\]
+The script \path{math/mla/verification/two_head_manual_example.py} records the
+same calculation and outputs
+\[
+  [3.520736883716041,\;1.6404574756806274].
+\]
+
+\section{Step 10: Verification Summary}
+
+The main verifier ran on an NVIDIA B200 GPU with
+\texttt{torch==2.11.0+cu128}.  The deterministic check used
+\[
+  B=2,\ L=3,\ M=5,\ D=16,\ H=4,\ N=3,\ R=2,\ V=3,\ Q=5,\ C=6.
+\]
+All checked equalities passed:
+
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+Check & Max absolute error \\
+\midrule
+Independent reference vs local baseline & $5.96\cdot 10^{-8}$ \\
+Concatenated score vs decomposed score & $1.19\cdot 10^{-7}$ \\
+Concatenated score vs absorbed score & $1.19\cdot 10^{-7}$ \\
+Materialized context vs absorbed context & $5.96\cdot 10^{-8}$ \\
+Compressed-cache implementation vs baseline & $0$ \\
+Absorbed implementation vs baseline & $5.96\cdot 10^{-8}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The article export was also reproduced with
+\path{tools/zhihu-to-markdown/export_article.py}; LaTeX integrity passed with
+101 fragments.  The TeX build result is tracked in
+\path{math/mla/verification/tex_build.md}.
+
+Two vLLM-oriented checks were added.  The standalone contract trace verifies
+the algebra on both a small shape and the profile shape; the profile run has
+output max absolute difference $2.62\cdot 10^{-6}$, consistent with large
+float32 reductions.  The actual vLLM dummy-engine probe loads the one-layer
+DeepSeek-V2 config, captures the MLA tensor shapes above, and generates one
+token with dummy weights.
+
+\section{Open Limits}
+
+The current equality proof is for the shared dense MLA algebra.  It extends
+immediately to any additive mask that is inserted identically into the
+materialized and absorbed logits before softmax.
+
+The proof does not claim bitwise floating-point identity.  It claims
+real-arithmetic equality plus executable floating-point parity within the
+tolerances recorded in the verification artifacts.
+
+The following production concerns remain outside this base theorem:
+training-time dropout, YaRN-specific scaling changes, all mask variants not
+represented as a shared additive logit term, mutation semantics of a production
+paged cache, quantized cache formats, sparse/NSA attention patterns, CUDA graph
+constraints, and backend-specific fused kernels.  The production
+implementations confirm the same base cache and absorption equations, but each
+of those runtime features should receive its own proof or parity test before it
+is folded into the mathematical statement.
+
 \end{document}
-
-
-

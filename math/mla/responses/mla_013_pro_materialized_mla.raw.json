@@ -1,0 +1,81 @@
+{
+  "background": true,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1778288986,
+  "created_at": 1778288564,
+  "error": null,
+  "frequency_penalty": 0.0,
+  "id": "resp_06adea5a818b959f0069fe87b49e7081a1b56bcb4d051520d5",
+  "incomplete_details": null,
+  "instructions": null,
+  "max_output_tokens": 50000,
+  "max_tool_calls": null,
+  "metadata": {
+    "project": "math/mla",
+    "task_id": "mla_013_pro_materialized_mla"
+  },
+  "model": "gpt-5.5-pro-2026-04-23",
+  "moderation": null,
+  "object": "response",
+  "output": [
+    {
+      "id": "rs_06adea5a818b959f0069fe895a554481a1b2e2090e90d2b94d",
+      "summary": [],
+      "type": "reasoning"
+    },
+    {
+      "content": [
+        {
+          "annotations": [],
+          "logprobs": [],
+          "text": "\\subsection{Materialized MLA forward pass}\n\\label{sec:materialized-mla-forward}\n\nLet\n\\[\nT=N+R,\\qquad X=C+R,\\qquad Y=N+V,\n\\]\nwhere \\(B\\) is the batch size, \\(L\\) is the query length, \\(M\\) is the memory length, \\(D\\) is the hidden size, \\(H\\) is the number of heads, \\(N\\) is the non-RoPE query/key head dimension, \\(R\\) is the RoPE suffix dimension, \\(V\\) is the value head dimension, \\(Q\\) is the query compression rank, and \\(C\\) is the KV compression rank.  The inputs are\n\\[\n\\mathbf h^q \\equiv \\texttt{hidden\\_q\\_BLD}\\in\\mathbb R^{B\\times L\\times D},\n\\qquad\n\\mathbf h^{kv} \\equiv \\texttt{hidden\\_kv\\_BMD}\\in\\mathbb R^{B\\times M\\times D}.\n\\]\nAll learned projections below are applied independently at each leading batch/sequence position.  Let\n\\[\nP_{q,a}:\\mathbb R^D\\to\\mathbb R^Q,\\quad\nP_{q,b}:\\mathbb R^Q\\to\\mathbb R^{H T},\\quad\nP_{kv,a}:\\mathbb R^D\\to\\mathbb R^X,\\quad\nP_{kv,b}:\\mathbb R^C\\to\\mathbb R^{H Y},\\quad\nP_o:\\mathbb R^{H V}\\to\\mathbb R^D\n\\]\ndenote the learned projections corresponding to \\texttt{q\\_a\\_proj}, \\texttt{q\\_b\\_proj}, \\texttt{kv\\_a\\_proj\\_with\\_mqa}, \\texttt{kv\\_b\\_proj}, and the output projection, respectively.  The layer normalizations \\(\\operatorname{LN}_{q,a}\\) and \\(\\operatorname{LN}_{kv,a}\\) act on the last dimension only.\n\nLet \\(\\rho_p:\\mathbb R^R\\to\\mathbb R^R\\) denote the base RoPE rotation at position id \\(p\\).  For even \\(R\\), this can be written pairwise as\n\\[\n\\begin{pmatrix}\n[\\rho_p(x)]_{2i-1}\\\\\n[\\rho_p(x)]_{2i}\n\\end{pmatrix}\n=\n\\begin{pmatrix}\n\\cos(p\\omega_i) & -\\sin(p\\omega_i)\\\\\n\\sin(p\\omega_i) & \\cos(p\\omega_i)\n\\end{pmatrix}\n\\begin{pmatrix}\nx_{2i-1}\\\\\nx_{2i}\n\\end{pmatrix},\n\\qquad i=1,\\ldots,R/2,\n\\]\nwith the base-RoPE frequency schedule \\(\\{\\omega_i\\}\\) used by the executable baseline.  Let \\(p^q_\\ell\\) and \\(p^k_m\\) be the query and key position ids used for query position \\(\\ell\\) and memory position \\(m\\).\n\n\\paragraph{Query path.}\nThe query path is\n\\[\n\\texttt{q\\_b\\_proj(q\\_a\\_layernorm(q\\_a\\_proj(hidden\\_q)))}.\n\\]\nIn tensor notation,\n\\begin{align}\n\\mathbf q^{\\mathrm{lat}}\n&=\n\\operatorname{LN}_{q,a}\\!\\left(P_{q,a}(\\mathbf h^q)\\right)\n&&\\in \\mathbb R^{B\\times L\\times Q}\n&&\\equiv \\texttt{q\\_latent\\_BLQ},\n\\\\\n\\overline{\\mathbf q}\n&=\nP_{q,b}(\\mathbf q^{\\mathrm{lat}})\n&&\\in \\mathbb R^{B\\times L\\times (H T)}.\n\\end{align}\nThe packed last dimension of \\(\\overline{\\mathbf q}\\) is viewed as \\(H\\) heads of width \\(T\\) and transposed to head-major layout:\n\\[\n\\mathbf q^{\\mathrm{full}}_{b h \\ell t}\n=\n\\overline{\\mathbf q}_{b,\\ell,(h-1)T+t},\n\\qquad\n\\mathbf q^{\\mathrm{full}}\\in\\mathbb R^{B\\times H\\times L\\times T}\n\\equiv \\texttt{q\\_full\\_BHLT}.\n\\]\nSplitting the last dimension into the non-RoPE prefix of size \\(N\\) and the RoPE suffix of size \\(R\\) gives\n\\begin{align}\n\\mathbf q^{\\mathrm n}_{b h \\ell n}\n&=\n\\mathbf q^{\\mathrm{full}}_{b h \\ell n},\n&& n=1,\\ldots,N,\n\\\\\n\\mathbf q^{\\mathrm{r,raw}}_{b h \\ell r}\n&=\n\\mathbf q^{\\mathrm{full}}_{b h \\ell,N+r},\n&& r=1,\\ldots,R,\n\\end{align}\nwith\n\\[\n\\mathbf q^{\\mathrm n}\\in\\mathbb R^{B\\times H\\times L\\times N}\n\\equiv \\texttt{q\\_nope\\_BHLN},\n\\qquad\n\\mathbf q^{\\mathrm{r,raw}}\\in\\mathbb R^{B\\times H\\times L\\times R}\n\\equiv \\texttt{q\\_rope\\_BHLR}.\n\\]\nBase RoPE is then applied to the query RoPE suffix:\n\\[\n\\mathbf q^{\\mathrm r}_{b h \\ell,:}\n=\n\\rho_{p^q_\\ell}\\!\\left(\\mathbf q^{\\mathrm{r,raw}}_{b h \\ell,:}\\right),\n\\qquad\n\\mathbf q^{\\mathrm r}\\in\\mathbb R^{B\\times H\\times L\\times R}\n\\equiv \\texttt{q\\_rope\\_after\\_rope\\_BHLR}.\n\\]\nThe materialized query used in attention is the concatenation\n\\[\n\\mathbf q\n=\n\\left[\\mathbf q^{\\mathrm n},\\mathbf q^{\\mathrm r}\\right]_{\\mathrm{last}}\n\\in\\mathbb R^{B\\times H\\times L\\times T}\n\\equiv \\texttt{query\\_BHLT}.\n\\]\nThe query RoPE suffix \\(\\mathbf q^{\\mathrm{r,raw}}\\) is produced by the query projection path above; it is not produced by the KV RoPE projection.\n\n\\paragraph{KV path.}\nThe KV path begins with the shared MQA-style projection\n\\[\n\\mathbf z^{kv}\n=\nP_{kv,a}(\\mathbf h^{kv})\n\\in\\mathbb R^{B\\times M\\times X}\n\\equiv \\texttt{kv\\_raw\\_BMX},\n\\qquad X=C+R.\n\\]\nThis tensor is split along the last dimension into the compressed KV latent and the raw shared RoPE key suffix:\n\\begin{align}\n\\mathbf c^{\\mathrm{raw}}_{b m c}\n&=\n\\mathbf z^{kv}_{b m c},\n&& c=1,\\ldots,C,\n\\\\\n\\mathbf k^{\\mathrm{r,raw}}_{b m r}\n&=\n\\mathbf z^{kv}_{b m,C+r},\n&& r=1,\\ldots,R.\n\\end{align}\nThus\n\\[\n\\mathbf c^{\\mathrm{raw}}\\in\\mathbb R^{B\\times M\\times C}\n\\equiv \\texttt{compressed\\_kv\\_BMC},\n\\qquad\n\\mathbf k^{\\mathrm{r,raw}}\\in\\mathbb R^{B\\times M\\times R}\n\\equiv \\texttt{k\\_rope\\_raw\\_BMR}.\n\\]\nThe KV layer normalization applies only to the compressed KV latent:\n\\[\n\\mathbf c\n=\n\\operatorname{LN}_{kv,a}\\!\\left(\\mathbf c^{\\mathrm{raw}}\\right)\n\\in\\mathbb R^{B\\times M\\times C}\n\\equiv \\texttt{compressed\\_kv\\_norm\\_BMC}.\n\\]\nThe raw shared RoPE key suffix bypasses this layer normalization.  It is first given a singleton head axis,\n\\[\n\\mathbf k^{\\mathrm{r,in}}_{b,1,m,r}\n=\n\\mathbf k^{\\mathrm{r,raw}}_{b m r},\n\\qquad\n\\mathbf k^{\\mathrm{r,in}}\\in\\mathbb R^{B\\times 1\\times M\\times R}\n\\equiv \\texttt{k\\_rope\\_B1MR},\n\\]\nand then base RoPE is applied:\n\\[\n\\mathbf k^{\\mathrm r}_{b,1,m,:}\n=\n\\rho_{p^k_m}\\!\\left(\\mathbf k^{\\mathrm{r,in}}_{b,1,m,:}\\right),\n\\qquad\n\\mathbf k^{\\mathrm r}\\in\\mathbb R^{B\\times 1\\times M\\times R}\n\\equiv \\texttt{k\\_rope\\_after\\_rope\\_B1MR}.\n\\]\nThe compressed KV latent is expanded into packed per-head non-RoPE keys and values:\n\\begin{align}\n\\overline{\\mathbf u}^{kv}\n&=\nP_{kv,b}(\\mathbf c)\n&&\\in\\mathbb R^{B\\times M\\times (H Y)},\n\\\\\n\\mathbf u^{kv}_{b h m y}\n&=\n\\overline{\\mathbf u}^{kv}_{b,m,(h-1)Y+y}\n&&\\in\\mathbb R^{B\\times H\\times M\\times Y}\n&&\\equiv \\texttt{kv\\_full\\_BHMY}.\n\\end{align}\nSplitting the last dimension of \\(\\mathbf u^{kv}\\) into the non-RoPE key part of size \\(N\\) and the value part of size \\(V\\) gives\n\\begin{align}\n\\mathbf k^{\\mathrm n}_{b h m n}\n&=\n\\mathbf u^{kv}_{b h m n},\n&& n=1,\\ldots,N,\n\\\\\n\\mathbf v_{b h m v}\n&=\n\\mathbf u^{kv}_{b h m,N+v},\n&& v=1,\\ldots,V,\n\\end{align}\nwith\n\\[\n\\mathbf k^{\\mathrm n}\\in\\mathbb R^{B\\times H\\times M\\times N}\n\\equiv \\texttt{k\\_nope\\_BHMN},\n\\qquad\n\\mathbf v\\in\\mathbb R^{B\\times H\\times M\\times V}\n\\equiv \\texttt{value\\_BHMV}.\n\\]\nThe RoPE key suffix is shared across heads.  When materializing the full key tensor, it is broadcast from head dimension \\(1\\) to head dimension \\(H\\):\n\\[\n\\mathbf k^{\\mathrm{r},H}_{b h m r}\n=\n\\mathbf k^{\\mathrm r}_{b,1,m,r},\n\\qquad\n\\mathbf k^{\\mathrm{r},H}\\in\\mathbb R^{B\\times H\\times M\\times R}.\n\\]\nThe materialized key is then\n\\[\n\\mathbf k\n=\n\\left[\\mathbf k^{\\mathrm n},\\mathbf k^{\\mathrm{r},H}\\right]_{\\mathrm{last}}\n\\in\\mathbb R^{B\\times H\\times M\\times T}\n\\equiv \\texttt{key\\_BHMT}.\n\\]\n\n\\paragraph{Scores and attention weights.}\nThe materialized attention scores are computed by multiplying\n\\[\n\\texttt{query\\_BHLT}\n\\quad\\text{against}\\quad\n\\texttt{key\\_BHMT}^{\\mathsf T}\n\\]\nover the last dimension \\(T\\), using the simplified local scale \\(1/\\sqrt{T}\\):\n\\[\n\\mathbf S\n=\n\\frac{1}{\\sqrt{T}}\\,\n\\mathbf q\\,\\mathbf k^{\\mathsf T}\n\\in\\mathbb R^{B\\times H\\times L\\times M}\n\\equiv \\texttt{scores\\_BHLM},\n\\]\nwhere \\(\\mathbf k^{\\mathsf T}\\) denotes transposition of the last two axes of \\(\\mathbf k\\), i.e. \\(B\\times H\\times M\\times T\\) becomes \\(B\\times H\\times T\\times M\\).\n\nEquivalently, in index notation,\n\\[\n\\texttt{scores\\_BHLM}[b,h,\\ell,m]\n=\n\\mathbf S_{b h \\ell m}\n=\n\\frac{1}{\\sqrt{T}}\n\\sum_{t=1}^{T}\n\\mathbf q_{b h \\ell t}\\,\n\\mathbf k_{b h m t},\n\\]\nfor\n\\[\nb=1,\\ldots,B,\\qquad\nh=1,\\ldots,H,\\qquad\n\\ell=1,\\ldots,L,\\qquad\nm=1,\\ldots,M.\n\\]\n\nWith no mask, the attention weights are the softmax over the memory axis:\n\\[\n\\mathbf a_{b h \\ell m}\n=\n\\frac{\\exp(\\mathbf S_{b h \\ell m})}\n{\\sum_{j=1}^{M}\\exp(\\mathbf S_{b h \\ell j})},\n\\qquad\n\\mathbf a\\in\\mathbb R^{B\\times H\\times L\\times M}\n\\equiv \\texttt{weights\\_BHLM}.\n\\]\n\n\\paragraph{Non-RoPE/RoPE score decomposition.}\nBecause the query and key tensors are concatenations of disjoint non-RoPE and RoPE feature blocks,\n\\[\n\\mathbf q\n=\n\\left[\\mathbf q^{\\mathrm n},\\mathbf q^{\\mathrm r}\\right]_{\\mathrm{last}},\n\\qquad\n\\mathbf k\n=\n\\left[\\mathbf k^{\\mathrm n},\\mathbf k^{\\mathrm{r},H}\\right]_{\\mathrm{last}},\n\\]\nthe score tensor decomposes as\n\\[\n\\mathbf S\n=\n\\mathbf S^{\\mathrm n}\n+\n\\mathbf S^{\\mathrm r},\n\\qquad\n\\mathbf S^{\\mathrm n},\\mathbf S^{\\mathrm r}\\in\\mathbb R^{B\\times H\\times L\\times M}.\n\\]\nThe non-RoPE contribution is\n\\[\n\\mathbf S^{\\mathrm n}_{b h \\ell m}\n=\n\\frac{1}{\\sqrt{T}}\n\\sum_{n=1}^{N}\n\\mathbf q^{\\mathrm n}_{b h \\ell n}\\,\n\\mathbf k^{\\mathrm n}_{b h m n},\n\\qquad\n\\mathbf q^{\\mathrm n}\\in\\mathbb R^{B\\times H\\times L\\times N},\n\\quad\n\\mathbf k^{\\mathrm n}\\in\\mathbb R^{B\\times H\\times M\\times N}.\n\\]\nIn batched matrix form,\n\\[\n\\mathbf S^{\\mathrm n}\n=\n\\frac{1}{\\sqrt{T}}\\,\n\\mathbf q^{\\mathrm n}\\,\n(\\mathbf k^{\\mathrm n})^{\\mathsf T}\n\\in\\mathbb R^{B\\times H\\times L\\times M}.\n\\]\nThe RoPE contribution is\n\\[\n\\mathbf S^{\\mathrm r}_{b h \\ell m}\n=\n\\frac{1}{\\sqrt{T}}\n\\sum_{r=1}^{R}\n\\mathbf q^{\\mathrm r}_{b h \\ell r}\\,\n\\mathbf k^{\\mathrm{r},H}_{b h m r}\n=\n\\frac{1}{\\sqrt{T}}\n\\sum_{r=1}^{R}\n\\mathbf q^{\\mathrm r}_{b h \\ell r}\\,\n\\mathbf k^{\\mathrm r}_{b,1,m,r},\n\\]\nwhere\n\\[\n\\mathbf q^{\\mathrm r}\\in\\mathbb R^{B\\times H\\times L\\times R},\n\\qquad\n\\mathbf k^{\\mathrm r}\\in\\mathbb R^{B\\times 1\\times M\\times R},\n\\qquad\n\\mathbf k^{\\mathrm{r},H}\\in\\mathbb R^{B\\times H\\times M\\times R}.\n\\]\nIn batched matrix form with head broadcast,\n\\[\n\\mathbf S^{\\mathrm r}\n=\n\\frac{1}{\\sqrt{T}}\\,\n\\mathbf q^{\\mathrm r}\\,\n(\\mathbf k^{\\mathrm{r},H})^{\\mathsf T}\n\\in\\mathbb R^{B\\times H\\times L\\times M}.\n\\]\nThus the full materialized score computation is\n\\[\n\\boxed{\n\\mathbf S_{b h \\ell m}\n=\n\\frac{1}{\\sqrt{T}}\n\\left(\n\\sum_{n=1}^{N}\n\\mathbf q^{\\mathrm n}_{b h \\ell n}\\,\n\\mathbf k^{\\mathrm n}_{b h m n}\n+\n\\sum_{r=1}^{R}\n\\mathbf q^{\\mathrm r}_{b h \\ell r}\\,\n\\mathbf k^{\\mathrm r}_{b,1,m,r}\n\\right)\n}\n\\]\nwith output shape \\(B\\times H\\times L\\times M\\).\n\n\\paragraph{Context and output projection.}\nThe attention context is the weighted sum of values over the memory axis:\n\\[\n\\mathbf c^{\\mathrm{attn}}_{b h \\ell v}\n=\n\\sum_{m=1}^{M}\n\\mathbf a_{b h \\ell m}\\,\n\\mathbf v_{b h m v},\n\\qquad\n\\mathbf c^{\\mathrm{attn}}\\in\\mathbb R^{B\\times H\\times L\\times V}\n\\equiv \\texttt{context\\_BHLV}.\n\\]\nThe context is transposed back to \\(B\\times L\\times H\\times V\\), flattened over the head and value dimensions, and projected to the hidden dimension:\n\\[\n\\overline{\\mathbf c}^{\\mathrm{attn}}_{b,\\ell,(h-1)V+v}\n=\n\\mathbf c^{\\mathrm{attn}}_{b h \\ell v},\n\\qquad\n\\overline{\\mathbf c}^{\\mathrm{attn}}\\in\\mathbb R^{B\\times L\\times (H V)}.\n\\]\nThe final output is\n\\[\n\\mathbf o\n=\nP_o\\!\\left(\\overline{\\mathbf c}^{\\mathrm{attn}}\\right)\n\\in\\mathbb R^{B\\times L\\times D}\n\\equiv \\texttt{output\\_BLD}.\n\\]\n\n\\paragraph{Correspondence with the local implementation.}\nThe local implementation's \\texttt{view} followed by \\texttt{transpose(1, 2)} implements the reshapes\n\\[\nB\\times L\\times (H T)\\to B\\times H\\times L\\times T\n\\]\nfor queries and\n\\[\nB\\times M\\times (H Y)\\to B\\times H\\times M\\times Y\n\\]\nfor expanded KV.  The \\texttt{split} operations implement the decompositions\n\\[\nT=N+R,\\qquad X=C+R,\\qquad Y=N+V,\n\\]\nnamely \\(\\texttt{q\\_full\\_BHLT}\\mapsto(\\texttt{q\\_nope\\_BHLN},\\texttt{q\\_rope\\_BHLR})\\), \\(\\texttt{kv\\_raw\\_BMX}\\mapsto(\\texttt{compressed\\_kv\\_BMC},\\texttt{k\\_rope\\_raw\\_BMR})\\), and \\(\\texttt{kv\\_full\\_BHMY}\\mapsto(\\texttt{k\\_nope\\_BHMN},\\texttt{value\\_BHMV})\\).  The \\texttt{cat} operations materialize \\(\\texttt{query\\_BHLT}\\) from the non-RoPE query prefix and the RoPE-rotated query suffix, and materialize \\(\\texttt{key\\_BHMT}\\) from the non-RoPE keys and the head-broadcast RoPE key suffix.  The call \\texttt{matmul(query, key.transpose(-2, -1))} evaluates the indexed score formula above, including the multiplication over the \\(T=N+R\\) feature axis; multiplication by \\(1/\\sqrt{T}\\) applies the executable-baseline score scale.  The \\texttt{softmax(..., dim=-1)} operation produces \\(\\texttt{weights\\_BHLM}\\) over the memory index \\(m\\).  The second \\texttt{matmul(weights, value)} produces \\(\\texttt{context\\_BHLV}\\).  Finally, \\texttt{transpose} and \\texttt{view}/\\texttt{reshape} flatten \\(H\\) and \\(V\\) into \\(H V\\), after which the output projection maps \\(B\\times L\\times (H V)\\) to \\(\\texttt{output\\_BLD}\\).\n\n\\paragraph{Assumptions and non-goals.}\nThis materialized executable baseline uses no attention mask, disables dropout, and applies base RoPE to the RoPE suffixes.  The softmax is therefore taken over all \\(M\\) memory positions, and the attention weights are used directly in the value matmul.  The score scale is exactly \\(1/\\sqrt{T}\\).  This derivation is only for the accepted local baseline and does not model full-model YaRN behavior or mask variants.",
+          "type": "output_text"
+        }
+      ],
+      "id": "msg_06adea5a818b959f0069fe895a597881a18bd09e7f309592c5",
+      "phase": "final_answer",
+      "role": "assistant",
+      "status": "completed",
+      "type": "message"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0.0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": "24h",
+  "reasoning": {
+    "effort": "medium",
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "status": "completed",
+  "store": true,
+  "temperature": 1.0,
+  "text": {
+    "format": {
+      "type": "text"
+    },
+    "verbosity": "high"
+  },
+  "tool_choice": "auto",
+  "tools": [],
+  "top_logprobs": 0,
+  "top_p": 0.98,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 538,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 17370,
+    "output_tokens_details": {
+      "reasoning_tokens": 12627
+    },
+    "total_tokens": 17908
+  },
+  "user": null
+}

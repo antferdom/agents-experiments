@@ -212,3 +212,14 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Local snapshots cloned for MLA source comparison; commit pins live in math/mla docs.
+math/mla/external/
+
+# TeX intermediates for the MLA derivation; keep the built PDF artifact.
+math/mla/verification/mla.aux
+math/mla/verification/mla.out
+
+# Local Codex trace exports; project state is tracked under math/mla/.
+.agent-trace/
+.codex-traces/

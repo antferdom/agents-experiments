@@ -1,0 +1,149 @@
+{
+  "cuda": "12.8",
+  "cuda_available": true,
+  "generated_token_ids": [
+    [
+      233
+    ]
+  ],
+  "load_format": "dummy",
+  "mla_records": [
+    {
+      "head_size": 576,
+      "input_shapes": {
+        "k_pe": [
+          16384,
+          1,
+          64
+        ],
+        "kv_c_normed": [
+          16384,
+          512
+        ],
+        "q": [
+          16384,
+          128,
+          192
+        ]
+      },
+      "kv_lora_rank": 512,
+      "kwargs": {
+        "output_shape": "tuple"
+      },
+      "module": "MLAAttention",
+      "num_heads": 128,
+      "output_shape": [
+        16384,
+        16384
+      ],
+      "qk_nope_head_dim": 128,
+      "qk_rope_head_dim": 64,
+      "v_head_dim": 128
+    },
+    {
+      "head_size": 576,
+      "input_shapes": {
+        "k_pe": [
+          16384,
+          1,
+          64
+        ],
+        "kv_c_normed": [
+          16384,
+          512
+        ],
+        "q": [
+          16384,
+          128,
+          192
+        ]
+      },
+      "kv_lora_rank": 512,
+      "kwargs": {
+        "output_shape": "tuple"
+      },
+      "module": "MLAAttention",
+      "num_heads": 128,
+      "output_shape": [
+        16384,
+        16384
+      ],
+      "qk_nope_head_dim": 128,
+      "qk_rope_head_dim": 64,
+      "v_head_dim": 128
+    },
+    {
+      "head_size": 576,
+      "input_shapes": {
+        "k_pe": [
+          1024,
+          1,
+          64
+        ],
+        "kv_c_normed": [
+          1024,
+          512
+        ],
+        "q": [
+          1024,
+          128,
+          192
+        ]
+      },
+      "kv_lora_rank": 512,
+      "kwargs": {
+        "output_shape": "tuple"
+      },
+      "module": "MLAAttention",
+      "num_heads": 128,
+      "output_shape": [
+        1024,
+        16384
+      ],
+      "qk_nope_head_dim": 128,
+      "qk_rope_head_dim": 64,
+      "v_head_dim": 128
+    },
+    {
+      "head_size": 576,
+      "input_shapes": {
+        "k_pe": [
+          4,
+          1,
+          64
+        ],
+        "kv_c_normed": [
+          4,
+          512
+        ],
+        "q": [
+          4,
+          128,
+          192
+        ]
+      },
+      "kv_lora_rank": 512,
+      "kwargs": {
+        "output_shape": "tuple"
+      },
+      "module": "MLAAttention",
+      "num_heads": 128,
+      "output_shape": [
+        4,
+        16384
+      ],
+      "qk_nope_head_dim": 128,
+      "qk_rope_head_dim": 64,
+      "v_head_dim": 128
+    }
+  ],
+  "model_dir": "math/mla/verification/vllm_dummy_deepseek_v2_model",
+  "prompt_token_ids": [
+    1,
+    3,
+    4,
+    5
+  ],
+  "torch": "2.11.0+cu128",
+  "vllm_version": "0.20.1"
+}

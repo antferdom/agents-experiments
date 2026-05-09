@@ -1,0 +1,107 @@
+{
+  "device": "cuda",
+  "dimensions": {
+    "C": 6,
+    "D": 16,
+    "H": 2,
+    "N": 3,
+    "Q": 5,
+    "R": 2,
+    "Skv": 3,
+    "Sq": 2,
+    "T": 5,
+    "V": 3,
+    "X": 8,
+    "Y": 6
+  },
+  "dims_preset": "small",
+  "errors": {
+    "out_max_abs": 5.960464477539063e-08,
+    "out_rel_l2": 5.581545645988369e-08,
+    "scores_nope_max_abs": 1.4901161193847656e-07,
+    "scores_total_max_abs": 5.960464477539063e-08
+  },
+  "shapes": {
+    "cache_token_X": [
+      8
+    ],
+    "k_nope_SkvHN": [
+      3,
+      2,
+      3
+    ],
+    "k_pe_SkvR": [
+      3,
+      2
+    ],
+    "kv_c_SkvC": [
+      3,
+      6
+    ],
+    "latent_out_SHC": [
+      2,
+      2,
+      6
+    ],
+    "out_absorbed_SHV": [
+      2,
+      2,
+      3
+    ],
+    "out_materialized_SHV": [
+      2,
+      2,
+      3
+    ],
+    "q_SH_T": [
+      2,
+      2,
+      5
+    ],
+    "q_abs_SHC": [
+      2,
+      2,
+      6
+    ],
+    "q_c_SQ": [
+      2,
+      5
+    ],
+    "q_nope_SHN": [
+      2,
+      2,
+      3
+    ],
+    "q_pe_SHR": [
+      2,
+      2,
+      2
+    ],
+    "scores_absorbed_SHSkv": [
+      2,
+      2,
+      3
+    ],
+    "scores_materialized_SHSkv": [
+      2,
+      2,
+      3
+    ],
+    "v_SkvHV": [
+      3,
+      2,
+      3
+    ],
+    "w_uk_CHN": [
+      6,
+      2,
+      3
+    ],
+    "w_uv_CHV": [
+      6,
+      2,
+      3
+    ]
+  },
+  "torch": "2.11.0+cu128"
+}

@@ -1,0 +1,5 @@
+{
+  "max_gpt_5_5_pro_calls": 20,
+  "gpt_5_5_pro_calls_used": 6,
+  "policy": "Use gpt-5.5-pro only for hard reasoning subtasks. Stop before more than 20 calls."
+}
