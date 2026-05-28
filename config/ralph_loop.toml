@@ -1,7 +1,14 @@
 # Codex CLI 0.128.0+ "Ralph loop" experiment.
 # Enables persistent thread goals so Codex can keep working across turns until
 # the goal is completed, paused, cleared, or budget-limited.
-profile = "ralph-loop"
+# ralph-loop.config.toml
+model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
+model_reasoning_summary = "detailed"
+model_verbosity = "high"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "live"
 
 project_doc_max_bytes = 131072
 tool_output_token_limit = 12000
@@ -13,21 +20,3 @@ max_bytes = 536870912
 
 [features]
 goals = true
-
-[profiles.ralph-loop]
-model = "gpt-5.5"
-model_reasoning_effort = "xhigh"
-model_reasoning_summary = "detailed"
-model_verbosity = "high"
-approval_policy = "on-request"
-sandbox_mode = "workspace-write"
-web_search = "live"
-
-[profiles.yolo]
-model = "gpt-5.5"
-model_reasoning_effort = "xhigh"
-model_reasoning_summary = "detailed"
-model_verbosity = "high"
-approval_policy = "never"
-sandbox_mode = "danger-full-access"
-web_search = "live"
